@@ -21,7 +21,11 @@ async def test_register_and_execute_echo(registry: ToolRegistry) -> None:
 
 
 async def test_list_tools_sorted(registry: ToolRegistry) -> None:
-    assert [t.name for t in registry.list()] == ["echo"]
+    names = [t.name for t in registry.list()]
+    assert names == sorted(names)
+    assert "echo" in names
+    # The accounting tools register alongside the built-ins.
+    assert "propose_journal" in names
 
 
 async def test_unknown_tool_raises(registry: ToolRegistry) -> None:

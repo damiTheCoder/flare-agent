@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from sandbox.sandbox_tools import build_sandbox_run_tool
+from tools_gateway.accounting.ledger import register_ledger_tools
 from tools_gateway.registry import PERMISSION_READ, Tool, ToolRegistry, ToolResult
 
 
@@ -32,4 +33,6 @@ def create_default_registry(sandbox=None) -> ToolRegistry:
     )
     if sandbox is not None:
         registry.register(build_sandbox_run_tool(sandbox))
+    # MicroBalance accounting tools (Batch 1: ledger).
+    register_ledger_tools(registry)
     return registry
