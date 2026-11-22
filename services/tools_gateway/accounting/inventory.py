@@ -107,7 +107,13 @@ def _adjust_stock(company: dict[str, Any], args: dict[str, Any]) -> dict[str, An
     if not isinstance(reason, str) or reason.strip() == "":
         raise AccountingError(VALIDATION, "reason is required")
 
-    delta = _whole_quantity(args.get("quantity"))
+    raw_quantity = args.get("quantity")
+    parsed_quantity = _whole_quantity(raw_quantity)
+    if Decimal(str(raw_quantity).strip()) != parsed_quantity:
+        raise AccountingError(
+            VALIDATION, "Stock adjustment quantity must be a whole number of units"
+        )
+    delta = parsed_quantity
     if delta == 0:
         raise AccountingError(VALIDATION, "Stock adjustment must be a non-zero whole number")
 

@@ -104,7 +104,7 @@ async def test_zero_quantity_adjustment_is_rejected(reg):
     assert "non-zero" in result.content
 
 
-async def test_fraction_below_one_truncates_to_zero_and_is_rejected(reg):
+async def test_fraction_below_one_is_rejected_as_fractional(reg):
     item = await make_item(reg)
     result = await call(
         reg,
@@ -116,7 +116,7 @@ async def test_fraction_below_one_truncates_to_zero_and_is_rejected(reg):
     )
     assert not result.ok
     assert result.error_code == "VALIDATION"
-    assert "non-zero" in result.content
+    assert "whole number" in result.content
 
 
 async def test_stock_cannot_go_below_zero(reg):
@@ -203,19 +203,23 @@ async def test_outbound_adjustment_raises_pending_cogs_journal(reg):
     assert cogs["balance"] == "0.00"
 
 
-async def test_fractional_adjustment_truncates(reg):
+async def test_fractional_adjustment_is_rejected(reg):
     item = await make_item(reg, stock=10)
-    result = body(
-        await call(
-            reg,
-            "adjust_stock",
-            companyId=COMPANY,
-            itemId=item["id"],
-            quantity=2.9,
-            reason="count",
-        )
+    result = await call(
+        reg,
+        "adjust_stock",
+        companyId=COMPANY,
+        itemId=item["id"],
+        quantity=2.9,
+        reason="count",
     )
-    assert result["item"]["stockQuantity"] == 12
+    assert not result.ok
+    assert result.error_code == "VALIDATION"
+    assert "whole number" in result.content
+
+    unchanged = store.get_item(COMPANY, item["id"])
+    assert unchanged is not None
+    assert unchanged["stock_quantity"] == 10
 
 
 async def test_zero_cost_item_moves_stock_without_a_journal(reg):
