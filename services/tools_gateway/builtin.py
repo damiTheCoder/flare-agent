@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from sandbox.sandbox_tools import build_sandbox_run_tool
 from tools_gateway.accounting.ledger import register_ledger_tools
+from tools_gateway.accounting.inventory import register_inventory_tools
 from tools_gateway.accounting.purchases import register_purchases_tools
 from tools_gateway.accounting.sales import register_sales_tools
 from tools_gateway.registry import PERMISSION_READ, Tool, ToolRegistry, ToolResult
@@ -39,4 +40,5 @@ def create_default_registry(sandbox=None) -> ToolRegistry:
     register_ledger_tools(registry)
     register_sales_tools(registry)
     register_purchases_tools(registry)
+    register_inventory_tools(registry)
     return registry

@@ -39,6 +39,7 @@ CHART_OF_ACCOUNTS: tuple[tuple[str, str, str, str], ...] = (
     ("3000", "Share Capital", "EQUITY", "Equity"),
     ("3100", "Retained Earnings", "EQUITY", "Equity"),
     ("4000", "Sales Revenue", "REVENUE", "Operating Revenue"),
+    ("4900", "Inventory Adjustment", "REVENUE", "Other Revenue"),
     ("5000", "Cost of Goods Sold", "EXPENSE", "Cost of Sales"),
     ("5100", "Salaries", "EXPENSE", "Operating Expenses"),
     ("5200", "Rent", "EXPENSE", "Operating Expenses"),
@@ -887,3 +888,16 @@ def account_movement(company_id: str, account_name: str) -> tuple[Decimal, Decim
         debit += Decimal(row["debit"])
         credit += Decimal(row["credit"])
     return debit.quantize(Decimal("0.01")), credit.quantize(Decimal("0.01"))
+
+
+def set_stock(company_id: str, item_id: str, quantity: int) -> dict[str, Any]:
+    """Set on-hand units (callers validate that quantity stays non-negative)."""
+    connection = connect()
+    with connection:
+        connection.execute(
+            "UPDATE items SET stock_quantity = ? WHERE company_id = ? AND id = ?",
+            (quantity, company_id, item_id),
+        )
+    item = get_item(company_id, item_id)
+    assert item is not None
+    return item
