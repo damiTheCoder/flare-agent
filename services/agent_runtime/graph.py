@@ -12,6 +12,7 @@ import json
 import logging
 from collections.abc import Callable
 from typing import Any, TypedDict
+from uuid import uuid4
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
@@ -106,6 +107,8 @@ def build_react_agent(
     approval: ApprovalManager | None = None,
     approval_scope: str | None = None,
     on_token: Callable[[str], None] | None = None,
+    on_tool_call: Callable[[str, dict[str, Any], str], None] | None = None,
+    on_tool_result: Callable[[str, Any], None] | None = None,
 ):
     """构建 ReAct 核心图：actor ↔ tool_executor（带预算熔断 + 审批门）。
 
@@ -222,6 +225,10 @@ def build_react_agent(
             }
         name = tool["name"]
         args = tool.get("args") or {}
+        call_id = uuid4().hex[:12]
+        # Emit before approval so the UI can show the call as pending.
+        if on_tool_call is not None:
+            on_tool_call(name, args, call_id)
         # F1.3/F2.4 审批门：破坏性/策略要求的工具执行前 interrupt 挂起，等人工决策。
         # resume={"approved": True} 放行执行；False 拒绝，拒绝观察回灌给模型（agent 换路/收尾）。
         # TOFU：同作用域已获批的工具 -> 免 interrupt 直行。
@@ -245,6 +252,8 @@ def build_react_agent(
                     reason = str(resume.get("reason", "")).strip()
                     msg = f"操作被拒绝：{reason}" if reason else "操作被用户拒绝"
                     rejected = ToolResult(ok=False, error_code="APPROVAL_REJECTED", content=msg)
+                    if on_tool_result is not None:
+                        on_tool_result(call_id, rejected)
                     return {
                         "step_count": step + 1,
                         "pending_tool": None,
@@ -257,6 +266,8 @@ def build_react_agent(
             # F1: 模型选错工具/参数不对是常态——结构化失败观察回灌，让模型重试/换路
             error_code = "UNKNOWN_TOOL" if isinstance(exc, NotFoundError) else "INVALID_ARGS"
             result = ToolResult(ok=False, error_code=error_code, content=str(exc.message))
+        if on_tool_result is not None:
+            on_tool_result(call_id, result)
         return {
             "step_count": step + 1,
             "pending_tool": None,

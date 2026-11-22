@@ -90,6 +90,10 @@ def test_chat_completions_stream() -> None:
 
 def _delta(line: str) -> str:
     obj = json.loads(line[len("data: ") :])
+    # Flare emits named tool_call / tool_result frames alongside the standard
+    # chunks; only chunks carry choices.
+    if "choices" not in obj:
+        return ""
     return obj["choices"][0]["delta"].get("content", "")
 
 

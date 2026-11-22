@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import time
@@ -237,6 +238,24 @@ class TaskManager:
                 approval_scope=approval_scope,  # TOFU：已信任的工具免 interrupt 直行
                 # L6：LLM 每吐一段 token 实时写入 events → SSE stream 轮询即时推前端（打字机）
                 on_token=lambda d: task.events.append({"type": "token", "content": d}),
+                on_tool_call=lambda name, args, call_id: task.events.append(
+                    {
+                        "type": "tool_call",
+                        "data": {"id": call_id, "name": name, "arguments": args},
+                    }
+                ),
+                on_tool_result=lambda call_id, result: task.events.append(
+                    {
+                        "type": "tool_result",
+                        "data": {
+                            "id": call_id,
+                            "ok": result.ok,
+                            "content": result.content,
+                            "errorCode": result.error_code,
+                            "artifacts": result.artifacts,
+                        },
+                    }
+                ),
             )
             # F1.3 中断恢复循环：工具需审批时图发 interrupt 挂起 → 登记审批请求 +
             # 状态转 awaiting_approval → 等人工决策（REST）→ Command(resume=...) 续跑。

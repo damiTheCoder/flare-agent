@@ -148,36 +148,68 @@ def _chunk_object(
     }
 
 
-async def _stream_result(manager: TaskManager, task_id: str, model: str) -> AsyncIterator[str]:
-    """任务完成前先阻塞等待，随后按词回放结果（OpenAI chunk 格式 + [DONE]）。
+def _sse_event(name: str, payload: dict[str, Any]) -> str:
+    """Named SSE frame. `tool_call` / `tool_result` are Flare extensions that the
+    web client renders as structured cards; plain OpenAI clients ignore them."""
+    return f"event: {name}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
-    MVP 语义：Agent 工具调用在服务端内部完成，stream 只回放最终输出；
-    与真实 token 流形状一致，客户端（openai SDK/CLI）无需特殊处理。
-    """
-    try:
-        result = await _wait_done(manager, task_id)
-    except OpenAICompatError:
+
+async def _stream_result(manager: TaskManager, task_id: str, model: str) -> AsyncIterator[str]:
+    """Live stream: forward tool events as they happen and answer tokens as
+    OpenAI content deltas. Falls back to replaying the final output when the
+    provider never emitted token events."""
+    task = await manager.get(task_id)
+    if task is None:
         yield _sse_chunk(_chunk_object(task_id, model, "", "error"))
         yield "data: [DONE]\n\n"
         return
-    status = result.get("status")
-    output = _task_output(result)
-    if status != "completed":
-        output = f"[{status}] {output}".strip()
-    # 首块带 role 提示（OpenAI 客户端约定）
+
     yield _sse_chunk(
         {
             "id": f"chatcmpl-{task_id}",
             "object": "chat.completion.chunk",
             "created": int(time.time()),
             "model": model,
-            "choices": [
-                {"index": 0, "delta": {"role": "assistant", "content": ""}, "finish_reason": None}
-            ],
+            "choices": [{"index": 0, "delta": {"role": "assistant"}, "finish_reason": None}],
         }
     )
-    for word in output.split(" "):
-        yield _sse_chunk(_chunk_object(task_id, model, word + " ", None))
+
+    idx = 0
+    sent_content = False
+    deadline = time.monotonic() + 300.0
+    current = task
+    while True:
+        current = await manager.get(task_id) or current
+        events = current.events
+        while idx < len(events):
+            event = events[idx]
+            idx += 1
+            kind = event.get("type")
+            if kind == "tool_call":
+                yield _sse_event("tool_call", event.get("data") or {})
+            elif kind == "tool_result":
+                yield _sse_event("tool_result", event.get("data") or {})
+            elif kind == "token":
+                text = event.get("content") or ""
+                if text:
+                    sent_content = True
+                    yield _sse_chunk(_chunk_object(task_id, model, text, None))
+        if current.done:
+            break
+        if time.monotonic() > deadline:
+            yield _sse_chunk(_chunk_object(task_id, model, "", "error"))
+            yield "data: [DONE]\n\n"
+            return
+        await asyncio.sleep(0.05)
+
+    if not sent_content:
+        result = current.result or {}
+        output = _task_output(result)
+        if current.status != "completed":
+            output = f"[{current.status}] {output}".strip()
+        for word in output.split(" "):
+            yield _sse_chunk(_chunk_object(task_id, model, word + " ", None))
+
     yield _sse_chunk(_chunk_object(task_id, model, "", "stop"))
     yield "data: [DONE]\n\n"
 
