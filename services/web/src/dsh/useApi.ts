@@ -1,10 +1,16 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { apiGet } from "./rest";
 
-type State<T> = { data: T | null; error: string | null; loading: boolean };
+type State<T> = { data: T | null; error: string | null; loading: boolean; reload: () => void };
 
 export function useApi<T>(path: string): State<T> {
-  const [state, setState] = useState<State<T>>({ data: null, error: null, loading: true });
+  const [tick, setTick] = useState(0);
+  const [state, setState] = useState<Omit<State<T>, "reload">>({
+    data: null,
+    error: null,
+    loading: true,
+  });
+  const reload = useCallback(() => setTick((value) => value + 1), []);
 
   useEffect(() => {
     let alive = true;
@@ -25,7 +31,7 @@ export function useApi<T>(path: string): State<T> {
     return () => {
       alive = false;
     };
-  }, [path]);
+  }, [path, tick]);
 
-  return state;
+  return { ...state, reload };
 }

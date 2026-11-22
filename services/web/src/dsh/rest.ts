@@ -18,6 +18,8 @@ export type TrialBalance = {
   totalCredit: string;
 };
 
+export type Account = TrialBalanceRow;
+
 export type Invoice = {
   id: string;
   invoiceNumber: string;
@@ -77,4 +79,123 @@ export function money(value: string | number | undefined): string {
   const amount = Number(value);
   if (Number.isNaN(amount)) return String(value);
   return `₦${amount.toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+
+export type Customer = { id: string; name: string; email: string | null; phone: string | null };
+export type Vendor = Customer;
+
+export type Employee = {
+  id: string;
+  name: string;
+  email: string | null;
+  basicSalary: string;
+  housingAllowance: string;
+  transportAllowance: string;
+  grossSalary: string;
+  isActive: boolean;
+};
+
+export type PayrollRun = {
+  id: string;
+  month: string;
+  year: number;
+  status: string;
+  totalGross: string;
+  totalNet: string;
+  totalPaye: string;
+  totalPension: string;
+  totalNhf: string;
+};
+
+export type AgingRow = {
+  bucket: string;
+  daysPastDue: number;
+  dueDate?: string;
+  invoiceId?: string;
+  billId?: string;
+  invoiceNumber?: string;
+  billNumber?: string;
+  customer?: string | null;
+  vendor?: string | null;
+  outstanding: string;
+};
+
+export type Aging = {
+  asOf: string;
+  buckets: Array<{ key: string; label: string; count: number; total: string }>;
+  totalOutstanding: string;
+  invoices?: AgingRow[];
+  bills?: AgingRow[];
+};
+
+export type StatementLine = {
+  accountId: string;
+  code: string;
+  name: string;
+  type?: string;
+  amount: string;
+};
+
+export type ProfitLoss = {
+  from: string | null;
+  to: string | null;
+  revenue: StatementLine[];
+  expenses: StatementLine[];
+  totalRevenue: string;
+  totalExpenses: string;
+  netIncome: string;
+};
+
+export type BalanceSheet = {
+  asOf: string | null;
+  assets: StatementLine[];
+  liabilities: StatementLine[];
+  equity: StatementLine[];
+  totalAssets: string;
+  totalLiabilities: string;
+  totalEquity: string;
+  netIncome: string;
+};
+
+export type TaxSummary = { vatPayable: string; whtPayable: string };
+export type BankAccount = { id: string; code: string; name: string; type: string; balance: string };
+
+export type ReconTransaction = {
+  id: string;
+  date: string;
+  description: string;
+  amount: string;
+  type: string;
+  status: string;
+};
+
+export type Journal = {
+  id: string;
+  date: string;
+  memo: string | null;
+  status: string;
+  totalDebit: string;
+  totalCredit: string;
+  requiresApproval: boolean;
+};
+
+export async function apiPost<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(path, {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    let message = `${response.status} ${response.statusText}`;
+    try {
+      const parsed = (await response.json()) as { detail?: { message?: string } | string };
+      if (typeof parsed.detail === "string") message = parsed.detail;
+      else if (parsed.detail?.message !== undefined) message = parsed.detail.message;
+    } catch {
+      // keep status text
+    }
+    throw new Error(message);
+  }
+  return (await response.json()) as T;
 }

@@ -6,7 +6,7 @@ export function SalesPage() {
   const { data, error, loading } = useApi<{ invoices: Invoice[]; count: number }>("/api/invoices");
 
   return (
-    <Page title="Sales" meta={data !== null ? `${data.count} invoices` : undefined}>
+    <Page title="Invoices" meta={data !== null ? `${data.count} invoices` : undefined}>
       <PageState loading={loading} error={error} empty={data !== null && data.count === 0}>
         {data !== null ? (
           <Table
@@ -50,7 +50,7 @@ export function PurchasesPage() {
   const { data, error, loading } = useApi<{ bills: Bill[]; count: number }>("/api/bills");
 
   return (
-    <Page title="Purchases" meta={data !== null ? `${data.count} bills` : undefined}>
+    <Page title="Bills" meta={data !== null ? `${data.count} bills` : undefined}>
       <PageState loading={loading} error={error} empty={data !== null && data.count === 0}>
         {data !== null ? (
           <Table

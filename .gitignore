@@ -36,6 +36,7 @@ dist-web/
 
 # ---- Data / runtime (never commit user data) ----
 data/
+.data/
 logs/
 *.log
 .tmp/

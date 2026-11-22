@@ -4,7 +4,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { streamChat, type ChatMessage, type ToolCallEvent, type ToolResultEvent } from "./api";
 import { Composer } from "./Composer";
 import { Header } from "./Header";
+import { ChartOfAccountsPage } from "./pages/Accounts";
+import { ApAgingPage, ArAgingPage } from "./pages/Aging";
+import { BankAccountsPage, ReconciliationPage } from "./pages/Banking";
+import { CustomersPage, VendorsPage } from "./pages/Contacts";
 import { DashboardPage } from "./pages/Dashboard";
+import { ApprovalsPage, ManualJournalPage } from "./pages/Journals";
+import { EmployeesPage, PayrollHistoryPage, TaxSummaryPage } from "./pages/PayrollTax";
+import { BalanceSheetPage, ProfitLossPage } from "./pages/Reports";
 import { PurchasesPage, SalesPage } from "./pages/Sales";
 import { TrialBalancePage } from "./pages/TrialBalance";
 import { ToolCard } from "./ToolCard";
@@ -15,15 +22,125 @@ type Turn =
   | { id: string; role: "assistant"; items: Item[] };
 type ToolState = { call: ToolCallEvent; result?: ToolResultEvent };
 
-type View = "dashboard" | "ledger" | "sales" | "purchases" | "chat";
+type View =
+  | "dashboard"
+  | "accounts"
+  | "manual-journal"
+  | "approvals"
+  | "trial-balance"
+  | "invoices"
+  | "customers"
+  | "ar-aging"
+  | "bank-accounts"
+  | "reconciliation"
+  | "bills"
+  | "vendors"
+  | "ap-aging"
+  | "employees"
+  | "payroll-history"
+  | "tax-summary"
+  | "profit-loss"
+  | "balance-sheet"
+  | "chat";
 
-const NAV: Array<{ key: View; label: string }> = [
-  { key: "dashboard", label: "Dashboard" },
-  { key: "ledger", label: "Ledger" },
-  { key: "sales", label: "Sales" },
-  { key: "purchases", label: "Purchases" },
-  { key: "chat", label: "Chat" },
+type NavItem = { key: View; label: string };
+
+const NAV_GROUPS: Array<{ label: string | null; items: NavItem[] }> = [
+  { label: null, items: [{ key: "dashboard", label: "Dashboard" }] },
+  {
+    label: "GENERAL LEDGER",
+    items: [
+      { key: "accounts", label: "Chart of Accounts" },
+      { key: "manual-journal", label: "Manual Journal" },
+      { key: "approvals", label: "Journal Approvals" },
+      { key: "trial-balance", label: "Trial Balance" },
+    ],
+  },
+  {
+    label: "SALES & RECEIVABLES",
+    items: [
+      { key: "invoices", label: "Invoices" },
+      { key: "customers", label: "Customers" },
+      { key: "ar-aging", label: "AR Aging" },
+    ],
+  },
+  {
+    label: "BANKING",
+    items: [
+      { key: "bank-accounts", label: "Bank Accounts" },
+      { key: "reconciliation", label: "Reconciliation" },
+    ],
+  },
+  {
+    label: "PURCHASES & PAYABLES",
+    items: [
+      { key: "bills", label: "Bills" },
+      { key: "vendors", label: "Vendors" },
+      { key: "ap-aging", label: "AP Aging" },
+    ],
+  },
+  {
+    label: "PAYROLL & TAX",
+    items: [
+      { key: "employees", label: "Employees" },
+      { key: "payroll-history", label: "Payroll History" },
+      { key: "tax-summary", label: "Tax Summary" },
+    ],
+  },
+  {
+    label: "REPORTS",
+    items: [
+      { key: "profit-loss", label: "Profit & Loss" },
+      { key: "balance-sheet", label: "Balance Sheet" },
+    ],
+  },
+  { label: null, items: [{ key: "chat", label: "Chat" }] },
 ];
+
+const NAV_ITEMS: NavItem[] = NAV_GROUPS.flatMap((group) => group.items);
+
+function renderPage(view: View) {
+  switch (view) {
+    case "dashboard":
+      return <DashboardPage />;
+    case "accounts":
+      return <ChartOfAccountsPage />;
+    case "manual-journal":
+      return <ManualJournalPage />;
+    case "approvals":
+      return <ApprovalsPage />;
+    case "trial-balance":
+      return <TrialBalancePage />;
+    case "invoices":
+      return <SalesPage />;
+    case "customers":
+      return <CustomersPage />;
+    case "ar-aging":
+      return <ArAgingPage />;
+    case "bank-accounts":
+      return <BankAccountsPage />;
+    case "reconciliation":
+      return <ReconciliationPage />;
+    case "bills":
+      return <PurchasesPage />;
+    case "vendors":
+      return <VendorsPage />;
+    case "ap-aging":
+      return <ApAgingPage />;
+    case "employees":
+      return <EmployeesPage />;
+    case "payroll-history":
+      return <PayrollHistoryPage />;
+    case "tax-summary":
+      return <TaxSummaryPage />;
+    case "profit-loss":
+      return <ProfitLossPage />;
+    case "balance-sheet":
+      return <BalanceSheetPage />;
+    default:
+      return null;
+  }
+}
 
 const SUGGESTIONS = [
   "Create an invoice for Adeshina for 2 Ankara fabric",
@@ -49,7 +166,6 @@ export default function DshApp() {
   const [tokensPerSecond, setTokensPerSecond] = useState(0);
   const feedRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const demoRan = useRef(false);
   const stats = useRef({ started: 0, tokens: 0 });
 
   useEffect(() => {
@@ -140,13 +256,6 @@ export default function DshApp() {
     },
     [patchAssistant, streaming, turns, model],
   );
-
-  useEffect(() => {
-    if (demoRan.current) return;
-    if (new URLSearchParams(window.location.search).get("demo") !== "invoice") return;
-    demoRan.current = true;
-    void send("Create an invoice for Adeshina for 2 Ankara fabric");
-  }, [send]);
 
   const selectView = (next: View) => {
     setView(next);
@@ -239,23 +348,34 @@ export default function DshApp() {
             <span className="text-[13px] leading-none">+</span> New chat
           </button>
 
-          <nav className="mt-2 flex flex-col gap-px">
-            {NAV.map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => selectView(item.key)}
-                aria-current={view === item.key ? "page" : undefined}
-                className={`rounded-md px-1.5 py-1 text-left text-[12px] ${
-                  view === item.key
-                    ? "bg-neutral-200/80 font-medium text-neutral-900"
-                    : "text-neutral-600 hover:bg-neutral-200/50"
-                }`}
-              >
-                {item.label}
-              </button>
+          <div className="mt-1 flex flex-col">
+            {NAV_GROUPS.map((group, index) => (
+              <div key={group.label ?? `standalone-${index}`} className={index === 0 ? "" : "mt-2"}>
+                {group.label !== null ? (
+                  <p className="px-1.5 pb-0.5 text-[9.5px] font-semibold uppercase tracking-[0.08em] text-neutral-400">
+                    {group.label}
+                  </p>
+                ) : null}
+                <nav className="flex flex-col gap-px">
+                  {group.items.map((item) => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => selectView(item.key)}
+                      aria-current={view === item.key ? "page" : undefined}
+                      className={`rounded-md px-1.5 py-1 text-left text-[12px] ${
+                        view === item.key
+                          ? "bg-neutral-200/80 font-medium text-neutral-900"
+                          : "text-neutral-600 hover:bg-neutral-200/50"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </nav>
+              </div>
             ))}
-          </nav>
+          </div>
 
           <p className="mt-3 px-1.5 text-[9.5px] font-semibold uppercase tracking-[0.08em] text-neutral-400">
             Chats
@@ -285,7 +405,7 @@ export default function DshApp() {
 
       <main className="flex min-w-0 flex-1 flex-col">
         <Header
-          title={view === "chat" ? sessionTitle : (NAV.find((item) => item.key === view)?.label ?? "")}
+          title={view === "chat" ? sessionTitle : (NAV_ITEMS.find((item) => item.key === view)?.label ?? "")}
           onToggleSidebar={() => setSidebarOpen((open) => !open)}
           onCopyMarkdown={copyMarkdown}
           onDownloadLog={downloadLog}
@@ -363,15 +483,7 @@ export default function DshApp() {
         </>
         ) : (
           <div className="flex-1 overflow-y-auto px-3 py-3 pb-16 sm:px-5 sm:py-4 sm:pb-16 lg:px-6">
-            {view === "dashboard" ? (
-              <DashboardPage />
-            ) : view === "ledger" ? (
-              <TrialBalancePage />
-            ) : view === "sales" ? (
-              <SalesPage />
-            ) : (
-              <PurchasesPage />
-            )}
+            {renderPage(view)}
           </div>
         )}
 
