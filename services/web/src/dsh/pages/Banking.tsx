@@ -13,10 +13,10 @@ export function BankAccountsPage() {
           <Table
             head={
               <tr>
-                <th className="px-3 py-1.5 text-left font-semibold">Code</th>
-                <th className="px-3 py-1.5 text-left font-semibold">Account</th>
-                <th className="hidden px-3 py-1.5 text-left font-semibold sm:table-cell">Type</th>
-                <th className="px-3 py-1.5 text-right font-semibold">Balance</th>
+                <th scope="col" className="px-3 py-2 text-left font-semibold">Code</th>
+                <th scope="col" className="px-3 py-2 text-left font-semibold">Account</th>
+                <th scope="col" className="hidden px-3 py-2 text-left font-semibold sm:table-cell">Type</th>
+                <th scope="col" className="px-3 py-2 text-right font-semibold">Balance</th>
               </tr>
             }
           >
@@ -54,7 +54,7 @@ export function ReconciliationPage() {
           {data.accounts.map((account) => (
             <span
               key={account.id}
-              className="rounded-full border border-neutral-200 bg-white px-2 py-0.5 text-[11px] text-neutral-600"
+              className="rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-[11.5px] text-neutral-600"
             >
               {account.name} · {money(account.balance)}
             </span>
@@ -66,11 +66,11 @@ export function ReconciliationPage() {
           <Table
             head={
               <tr>
-                <th className="px-3 py-1.5 text-left font-semibold">Date</th>
-                <th className="px-3 py-1.5 text-left font-semibold">Description</th>
-                <th className="px-3 py-1.5 text-right font-semibold">Amount</th>
-                <th className="px-3 py-1.5 text-left font-semibold">Type</th>
-                <th className="px-3 py-1.5 text-left font-semibold">Status</th>
+                <th scope="col" className="px-3 py-2 text-left font-semibold">Date</th>
+                <th scope="col" className="px-3 py-2 text-left font-semibold">Description</th>
+                <th scope="col" className="px-3 py-2 text-right font-semibold">Amount</th>
+                <th scope="col" className="px-3 py-2 text-left font-semibold">Type</th>
+                <th scope="col" className="px-3 py-2 text-left font-semibold">Status</th>
               </tr>
             }
           >

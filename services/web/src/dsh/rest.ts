@@ -78,7 +78,11 @@ export function money(value: string | number | undefined): string {
   if (value === undefined || value === "") return "—";
   const amount = Number(value);
   if (Number.isNaN(amount)) return String(value);
-  return `₦${amount.toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const digits = Math.abs(amount).toLocaleString("en-NG", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return amount < 0 ? `−₦${digits}` : `₦${digits}`;
 }
 
 

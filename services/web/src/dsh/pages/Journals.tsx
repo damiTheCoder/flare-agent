@@ -3,8 +3,27 @@ import { apiPost, money, type Account, type Journal } from "../rest";
 import { useApi } from "../useApi";
 import { Cell, Page, PageState, Row, StatusPill, Table } from "./ui";
 
-const field = "h-7 w-full rounded-md border border-neutral-200 bg-white px-2 text-[12px] text-neutral-800 focus:border-neutral-400 focus:outline-none";
-const label = "text-[9.5px] font-semibold uppercase tracking-[0.06em] text-neutral-400";
+const field =
+  "mt-1 h-9 w-full rounded-md border border-neutral-200 bg-white px-2.5 text-[12.5px] text-neutral-800 transition-colors placeholder:text-neutral-300 hover:border-neutral-300 focus:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-900/10";
+const label = "text-[10.5px] font-medium uppercase tracking-[0.05em] text-neutral-500";
+
+function CheckIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
 
 export function ManualJournalPage() {
   const accounts = useApi<{ accounts: Account[]; count: number }>("/api/accounts");
@@ -19,7 +38,11 @@ export function ManualJournalPage() {
 
   const options = useMemo(() => accounts.data?.accounts ?? [], [accounts.data]);
   const canSubmit =
-    !busy && debitAccountId !== "" && creditAccountId !== "" && amount.trim() !== "" && debitAccountId !== creditAccountId;
+    !busy &&
+    debitAccountId !== "" &&
+    creditAccountId !== "" &&
+    amount.trim() !== "" &&
+    debitAccountId !== creditAccountId;
 
   const submit = async () => {
     if (!canSubmit) return;
@@ -45,86 +68,111 @@ export function ManualJournalPage() {
   };
 
   return (
-    <Page title="Manual journal" meta="Proposals stay PENDING until approved">
+    <Page title="Manual journal" meta="Proposals stay pending until approved">
       <PageState loading={accounts.loading} error={accounts.error}>
         <form
-          className="rounded-lg border border-neutral-200 bg-white p-3"
+          className="rounded-lg border border-neutral-200 bg-white p-4"
           onSubmit={(event) => {
             event.preventDefault();
             void submit();
           }}
         >
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div>
-              <p className={label}>Date</p>
-              <input className={`${field} mt-0.5`} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-            </div>
-            <div>
-              <p className={label}>Debit account</p>
-              <select
-                className={`${field} mt-0.5`}
-                value={debitAccountId}
-                onChange={(e) => setDebitAccountId(e.target.value)}
-              >
-                <option value="">Select…</option>
-                {options.map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {account.code} · {account.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <p className={label}>Credit account</p>
-              <select
-                className={`${field} mt-0.5`}
-                value={creditAccountId}
-                onChange={(e) => setCreditAccountId(e.target.value)}
-              >
-                <option value="">Select…</option>
-                {options.map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {account.code} · {account.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <p className={label}>Amount</p>
+              <label className={label} htmlFor="journal-date">
+                Date
+              </label>
               <input
-                className={`${field} mt-0.5 text-right tabular-nums`}
+                id="journal-date"
+                className={field}
+                type="date"
+                value={date}
+                onChange={(event) => setDate(event.target.value)}
+              />
+            </div>
+            <div>
+              <label className={label} htmlFor="journal-debit">
+                Debit account
+              </label>
+              <select
+                id="journal-debit"
+                className={field}
+                value={debitAccountId}
+                onChange={(event) => setDebitAccountId(event.target.value)}
+              >
+                <option value="">Select…</option>
+                {options.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.code} · {account.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={label} htmlFor="journal-credit">
+                Credit account
+              </label>
+              <select
+                id="journal-credit"
+                className={field}
+                value={creditAccountId}
+                onChange={(event) => setCreditAccountId(event.target.value)}
+              >
+                <option value="">Select…</option>
+                {options.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.code} · {account.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={label} htmlFor="journal-amount">
+                Amount
+              </label>
+              <input
+                id="journal-amount"
+                className={`${field} text-right tabular-nums`}
                 inputMode="decimal"
                 placeholder="0.00"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(event) => setAmount(event.target.value)}
               />
             </div>
           </div>
 
-          <div className="mt-2">
-            <p className={label}>Memo</p>
+          <div className="mt-3">
+            <label className={label} htmlFor="journal-memo">
+              Memo
+            </label>
             <input
-              className={`${field} mt-0.5`}
+              id="journal-memo"
+              className={field}
               placeholder="What is this entry for?"
               value={memo}
-              onChange={(e) => setMemo(e.target.value)}
+              onChange={(event) => setMemo(event.target.value)}
             />
           </div>
 
-          <div className="mt-3 flex items-center gap-2">
+          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
             <button
               type="submit"
               disabled={!canSubmit}
-              className="rounded-md bg-neutral-900 px-3 py-1.5 text-[12px] font-medium text-white disabled:bg-neutral-300"
+              className="h-9 rounded-md bg-neutral-900 px-3.5 text-[12.5px] font-medium text-white transition-colors hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/25 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-neutral-300"
             >
               {busy ? "Proposing…" : "Propose journal"}
             </button>
             {debitAccountId !== "" && debitAccountId === creditAccountId ? (
-              <span className="text-[11px] text-amber-600">Debit and credit must differ.</span>
+              <span className="text-[11.5px] text-amber-700">Debit and credit must differ.</span>
             ) : null}
-            {error !== null ? <span className="text-[11px] text-rose-600">{error}</span> : null}
+            {error !== null ? (
+              <span role="alert" className="text-[11.5px] text-rose-600">
+                {error}
+              </span>
+            ) : null}
             {result !== null ? (
-              <span className="text-[11px] text-emerald-700">
+              <span className="inline-flex items-center gap-1.5 text-[11.5px] text-emerald-700">
+                <CheckIcon />
                 Proposed {result.id} — {money(result.totalDebit)}. It is waiting in Journal Approvals.
               </span>
             ) : null}
@@ -157,23 +205,37 @@ export function ApprovalsPage() {
 
   return (
     <Page title="Journal approvals" meta={data !== null ? `${data.count} pending` : undefined}>
-      {failure !== null ? <p className="mb-2 text-[11px] text-rose-600">{failure}</p> : null}
+      {failure !== null ? (
+        <p role="alert" className="mb-2 text-[11.5px] text-rose-600">
+          {failure}
+        </p>
+      ) : null}
       <PageState loading={loading} error={error} empty={data !== null && data.count === 0}>
         {data !== null ? (
           <Table
             head={
               <tr>
-                <th className="px-3 py-1.5 text-left font-semibold">Date</th>
-                <th className="px-3 py-1.5 text-left font-semibold">Memo</th>
-                <th className="px-3 py-1.5 text-right font-semibold">Amount</th>
-                <th className="px-3 py-1.5 text-left font-semibold">Status</th>
-                <th className="px-3 py-1.5 text-right font-semibold">Action</th>
+                <th scope="col" className="px-3 py-2 text-left font-semibold">
+                  Date
+                </th>
+                <th scope="col" className="px-3 py-2 text-left font-semibold">
+                  Memo
+                </th>
+                <th scope="col" className="px-3 py-2 text-right font-semibold">
+                  Amount
+                </th>
+                <th scope="col" className="px-3 py-2 text-left font-semibold">
+                  Status
+                </th>
+                <th scope="col" className="px-3 py-2 text-right font-semibold">
+                  Action
+                </th>
               </tr>
             }
           >
             {data.journals.map((journal) => (
               <Row key={journal.id}>
-                <Cell className="text-neutral-500">{journal.date}</Cell>
+                <Cell className="whitespace-nowrap text-neutral-500">{journal.date}</Cell>
                 <Cell>{journal.memo ?? "—"}</Cell>
                 <Cell align="right" strong>
                   {money(journal.totalDebit)}
@@ -186,7 +248,7 @@ export function ApprovalsPage() {
                     type="button"
                     disabled={busy === journal.id}
                     onClick={() => void approve(journal.id)}
-                    className="rounded-md border border-neutral-200 bg-white px-2 py-0.5 text-[11px] font-medium text-neutral-700 hover:bg-neutral-50 disabled:text-neutral-400"
+                    className="h-7 rounded-md border border-neutral-200 bg-white px-2.5 text-[11.5px] font-medium text-neutral-700 transition-colors hover:border-neutral-300 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15 disabled:cursor-not-allowed disabled:text-neutral-400"
                   >
                     {busy === journal.id ? "Approving…" : "Approve"}
                   </button>

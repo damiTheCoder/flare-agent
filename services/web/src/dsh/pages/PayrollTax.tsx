@@ -12,13 +12,13 @@ export function EmployeesPage() {
           <Table
             head={
               <tr>
-                <th className="px-3 py-1.5 text-left font-semibold">Name</th>
-                <th className="hidden px-3 py-1.5 text-left font-semibold sm:table-cell">Email</th>
-                <th className="px-3 py-1.5 text-right font-semibold">Basic</th>
-                <th className="hidden px-3 py-1.5 text-right font-semibold md:table-cell">Housing</th>
-                <th className="hidden px-3 py-1.5 text-right font-semibold md:table-cell">Transport</th>
-                <th className="px-3 py-1.5 text-right font-semibold">Gross</th>
-                <th className="px-3 py-1.5 text-left font-semibold">Active</th>
+                <th scope="col" className="px-3 py-2 text-left font-semibold">Name</th>
+                <th scope="col" className="hidden px-3 py-2 text-left font-semibold sm:table-cell">Email</th>
+                <th scope="col" className="px-3 py-2 text-right font-semibold">Basic</th>
+                <th scope="col" className="hidden px-3 py-2 text-right font-semibold md:table-cell">Housing</th>
+                <th scope="col" className="hidden px-3 py-2 text-right font-semibold md:table-cell">Transport</th>
+                <th scope="col" className="px-3 py-2 text-right font-semibold">Gross</th>
+                <th scope="col" className="px-3 py-2 text-left font-semibold">Active</th>
               </tr>
             }
           >
@@ -78,13 +78,13 @@ export function PayrollHistoryPage() {
           <Table
             head={
               <tr>
-                <th className="px-3 py-1.5 text-left font-semibold">Period</th>
-                <th className="px-3 py-1.5 text-left font-semibold">Status</th>
-                <th className="px-3 py-1.5 text-right font-semibold">Gross</th>
-                <th className="px-3 py-1.5 text-right font-semibold">Net</th>
-                <th className="hidden px-3 py-1.5 text-right font-semibold sm:table-cell">PAYE</th>
-                <th className="hidden px-3 py-1.5 text-right font-semibold md:table-cell">Pension</th>
-                <th className="hidden px-3 py-1.5 text-right font-semibold md:table-cell">NHF</th>
+                <th scope="col" className="px-3 py-2 text-left font-semibold">Period</th>
+                <th scope="col" className="px-3 py-2 text-left font-semibold">Status</th>
+                <th scope="col" className="px-3 py-2 text-right font-semibold">Gross</th>
+                <th scope="col" className="px-3 py-2 text-right font-semibold">Net</th>
+                <th scope="col" className="hidden px-3 py-2 text-right font-semibold sm:table-cell">PAYE</th>
+                <th scope="col" className="hidden px-3 py-2 text-right font-semibold md:table-cell">Pension</th>
+                <th scope="col" className="hidden px-3 py-2 text-right font-semibold md:table-cell">NHF</th>
               </tr>
             }
           >
@@ -124,34 +124,34 @@ export function TaxSummaryPage() {
       <PageState loading={loading} error={error}>
         {data !== null ? (
           <>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2">
-                <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-neutral-400">
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              <div className="rounded-lg border border-neutral-200 bg-white px-3.5 py-3">
+                <p className="text-[10.5px] font-medium uppercase tracking-[0.06em] text-neutral-400">
                   VAT payable
                 </p>
-                <p className="mt-0.5 text-[15px] font-semibold tabular-nums text-neutral-900">
+                <p className="mt-1 text-[18px] font-semibold leading-none tabular-nums text-neutral-900">
                   {money(data.vatPayable)}
                 </p>
-                <p className="text-[10.5px] text-neutral-400">Output VAT less input VAT</p>
+                <p className="mt-1 text-[11px] text-neutral-400">Output VAT less input VAT</p>
               </div>
-              <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2">
-                <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-neutral-400">
+              <div className="rounded-lg border border-neutral-200 bg-white px-3.5 py-3">
+                <p className="text-[10.5px] font-medium uppercase tracking-[0.06em] text-neutral-400">
                   WHT payable
                 </p>
-                <p className="mt-0.5 text-[15px] font-semibold tabular-nums text-neutral-900">
+                <p className="mt-1 text-[18px] font-semibold leading-none tabular-nums text-neutral-900">
                   {money(data.whtPayable)}
                 </p>
-                <p className="text-[10.5px] text-neutral-400">Withholding tax on vendor bills</p>
+                <p className="mt-1 text-[11px] text-neutral-400">Withholding tax on vendor bills</p>
               </div>
             </div>
 
-            <div className="mt-3">
+            <div className="mt-4">
               <Table
                 head={
                   <tr>
-                    <th className="px-3 py-1.5 text-left font-semibold">Obligation</th>
-                    <th className="px-3 py-1.5 text-left font-semibold">Basis</th>
-                    <th className="px-3 py-1.5 text-right font-semibold">Amount due</th>
+                    <th scope="col" className="px-3 py-2 text-left font-semibold">Obligation</th>
+                    <th scope="col" className="px-3 py-2 text-left font-semibold">Basis</th>
+                    <th scope="col" className="px-3 py-2 text-right font-semibold">Amount due</th>
                   </tr>
                 }
               >

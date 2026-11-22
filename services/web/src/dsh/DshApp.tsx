@@ -329,30 +329,30 @@ export default function DshApp() {
       <aside
         className={`${
           sidebarOpen
-            ? "fixed inset-y-0 left-0 z-30 flex w-[250px] flex-col border-r border-neutral-200 bg-neutral-50 px-2.5 py-2.5 transition-transform duration-150 lg:static lg:z-auto lg:bg-neutral-50/80"
+            ? "fixed inset-y-0 left-0 z-30 flex w-[250px] flex-col border-r border-neutral-200 bg-neutral-50 px-3 py-3 transition-transform duration-150 lg:static lg:z-auto lg:bg-neutral-50/80"
             : "hidden"
         } overflow-y-auto`}
       >
-          <div className="flex items-center gap-2 px-1 pb-2">
-            <span className="grid h-[18px] w-[18px] place-items-center rounded-[5px] bg-blue-600 text-[10px] font-bold text-white">
+          <div className="flex items-center gap-2 px-1 pb-3">
+            <span className="grid h-5 w-5 place-items-center rounded-[5px] bg-blue-600 text-[10.5px] font-bold text-white">
               M
             </span>
-            <span className="text-[12.5px] font-semibold tracking-tight">MicroBalance</span>
+            <span className="text-[13px] font-semibold tracking-tight text-neutral-900">MicroBalance</span>
           </div>
 
           <button
             type="button"
             onClick={newChat}
-            className="flex h-8 items-center justify-center gap-1.5 rounded-lg border border-neutral-200 bg-white text-[12px] font-medium text-neutral-700 shadow-sm hover:bg-neutral-50"
+            className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-neutral-200 bg-white text-[12.5px] font-medium text-neutral-700 shadow-sm transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
           >
-            <span className="text-[13px] leading-none">+</span> New chat
+            <span className="text-[14px] leading-none">+</span> New chat
           </button>
 
-          <div className="mt-1 flex flex-col">
+          <div className="mt-2 flex flex-col">
             {NAV_GROUPS.map((group, index) => (
-              <div key={group.label ?? `standalone-${index}`} className={index === 0 ? "" : "mt-2"}>
+              <div key={group.label ?? `standalone-${index}`} className={index === 0 ? "" : "mt-3"}>
                 {group.label !== null ? (
-                  <p className="px-1.5 pb-0.5 text-[9.5px] font-semibold uppercase tracking-[0.08em] text-neutral-400">
+                  <p className="px-1.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.07em] text-neutral-400">
                     {group.label}
                   </p>
                 ) : null}
@@ -363,10 +363,10 @@ export default function DshApp() {
                       type="button"
                       onClick={() => selectView(item.key)}
                       aria-current={view === item.key ? "page" : undefined}
-                      className={`rounded-md px-1.5 py-1 text-left text-[12px] ${
+                      className={`relative rounded-md py-1.5 pl-2.5 pr-1.5 text-left text-[12.5px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15 ${
                         view === item.key
-                          ? "bg-neutral-200/80 font-medium text-neutral-900"
-                          : "text-neutral-600 hover:bg-neutral-200/50"
+                          ? "bg-neutral-200/70 font-medium text-neutral-900 before:absolute before:left-0 before:top-1/2 before:h-3.5 before:w-[2px] before:-translate-y-1/2 before:rounded-full before:bg-blue-600 before:content-['']"
+                          : "text-neutral-600 hover:bg-neutral-200/50 hover:text-neutral-900"
                       }`}
                     >
                       {item.label}
@@ -377,16 +377,16 @@ export default function DshApp() {
             ))}
           </div>
 
-          <p className="mt-3 px-1.5 text-[9.5px] font-semibold uppercase tracking-[0.08em] text-neutral-400">
+          <p className="mt-4 px-1.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.07em] text-neutral-400">
             Chats
           </p>
-          <nav className="mt-0.5 flex flex-col gap-px">
+          <nav className="flex flex-col gap-px">
             {turns.length === 0 ? (
               <p className="px-1.5 py-1 text-[12px] text-neutral-400">No conversations yet</p>
             ) : (
               <button
                 type="button"
-                className="truncate rounded-md bg-neutral-200/70 px-1.5 py-1 text-left text-[12px] text-neutral-700"
+                className="truncate rounded-md bg-neutral-200/70 px-2.5 py-1.5 text-left text-[12.5px] text-neutral-700 transition-colors hover:bg-neutral-200"
               >
                 {sessionTitle}
               </button>
@@ -394,11 +394,14 @@ export default function DshApp() {
           </nav>
 
           <div className="mt-auto border-t border-neutral-200 pt-2">
-            <button type="button" className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 hover:bg-neutral-200/60">
-              <span className="grid h-5 w-5 place-items-center rounded-full bg-neutral-300 text-[10px] font-semibold text-white">
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 transition-colors hover:bg-neutral-200/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
+            >
+              <span className="grid h-6 w-6 place-items-center rounded-full bg-neutral-300 text-[10.5px] font-semibold text-white">
                 D
               </span>
-              <span className="text-[12px] text-neutral-700">Damian</span>
+              <span className="text-[12.5px] text-neutral-700">Damian</span>
             </button>
           </div>
         </aside>
@@ -416,15 +419,15 @@ export default function DshApp() {
         <div ref={feedRef} className="flex-1 overflow-y-auto px-3 py-3 sm:px-5 sm:py-4 lg:px-6">
           <div className="mx-auto flex max-w-[760px] flex-col gap-3">
             {turns.length === 0 ? (
-              <div className="pt-6">
-                <p className="text-[13px] font-medium text-neutral-700">Start a task</p>
-                <div className="mt-2 flex flex-wrap gap-1.5">
+              <div className="pt-8">
+                <p className="text-[13.5px] font-medium text-neutral-800">Start a task</p>
+                <div className="mt-2.5 flex flex-wrap gap-2">
                   {SUGGESTIONS.map((suggestion) => (
                     <button
                       key={suggestion}
                       type="button"
                       onClick={() => void send(suggestion)}
-                      className="rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-[11.5px] text-neutral-600 hover:bg-neutral-50"
+                      className="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-[12px] text-neutral-600 transition-colors hover:border-neutral-300 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
                     >
                       {suggestion}
                     </button>
@@ -435,7 +438,7 @@ export default function DshApp() {
 
             {turns.map((turn) =>
               turn.role === "user" ? (
-                <div key={turn.id} className="ml-auto max-w-[80%] rounded-2xl bg-neutral-100 px-3 py-1.5 text-[13px] text-neutral-800">
+                <div key={turn.id} className="ml-auto max-w-[80%] rounded-2xl bg-neutral-100 px-3.5 py-2 text-[13.5px] leading-6 text-neutral-800">
                   {turn.text}
                 </div>
               ) : (
@@ -448,7 +451,7 @@ export default function DshApp() {
                         result={tools[item.callId]?.result}
                       />
                     ) : (
-                      <p key={`text-${index}`} className="whitespace-pre-wrap text-[13px] leading-6 text-neutral-800">
+                      <p key={`text-${index}`} className="whitespace-pre-wrap text-[13.5px] leading-6 text-neutral-800">
                         {item.text}
                       </p>
                     ),
@@ -482,7 +485,7 @@ export default function DshApp() {
         />
         </>
         ) : (
-          <div className="flex-1 overflow-y-auto px-3 py-3 pb-16 sm:px-5 sm:py-4 sm:pb-16 lg:px-6">
+          <div className="flex-1 overflow-y-auto px-3 py-4 pb-8 sm:px-5 sm:py-5 lg:px-6">
             {renderPage(view)}
           </div>
         )}
@@ -491,7 +494,7 @@ export default function DshApp() {
           <button
             type="button"
             onClick={() => selectView("chat")}
-            className="fixed bottom-4 right-4 z-20 rounded-full bg-neutral-900 px-3 py-2 text-[12px] font-medium text-white shadow-[0_8px_24px_rgba(16,16,20,0.25)]"
+            className="fixed bottom-4 right-4 z-20 h-9 rounded-full bg-neutral-900 px-3.5 text-[12.5px] font-medium text-white shadow-[0_6px_20px_rgba(16,16,20,0.18)] transition-colors hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/25 focus-visible:ring-offset-2 lg:hidden"
           >
             Chat
           </button>

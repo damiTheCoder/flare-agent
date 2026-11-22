@@ -5,13 +5,15 @@ import { Cell, Page, PageState, Row, Table } from "./ui";
 function BucketCard({ label, count, total }: { label: string; count: number; total: string }) {
   return (
     <div
-      className={`rounded-lg border px-3 py-2 ${
-        count === 0 ? "border-neutral-200 bg-white" : "border-neutral-300 bg-neutral-50"
+      className={`rounded-lg border bg-white px-3.5 py-2.5 ${
+        count === 0 ? "border-neutral-200" : "border-neutral-300"
       }`}
     >
-      <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-neutral-400">{label}</p>
-      <p className="mt-0.5 text-[14px] font-semibold tabular-nums text-neutral-900">{money(total)}</p>
-      <p className="text-[10.5px] text-neutral-400">
+      <p className="text-[10.5px] font-medium uppercase tracking-[0.06em] text-neutral-400">{label}</p>
+      <p className="mt-1 text-[16px] font-semibold leading-none tabular-nums text-neutral-900">
+        {money(total)}
+      </p>
+      <p className="mt-1 text-[11px] text-neutral-400">
         {count} {count === 1 ? "item" : "items"}
       </p>
     </div>
@@ -38,7 +40,7 @@ function AgingPage({ kind }: { kind: "ar" | "ap" }) {
     >
       <PageState loading={loading} error={error}>
         {data !== null ? (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
             {data.buckets.map((bucket) => (
               <BucketCard key={bucket.key} label={bucket.label} count={bucket.count} total={bucket.total} />
             ))}
@@ -46,18 +48,18 @@ function AgingPage({ kind }: { kind: "ar" | "ap" }) {
         ) : null}
       </PageState>
 
-      <div className="mt-3">
+      <div className="mt-4">
         <PageState loading={loading} error={error} empty={data !== null && rows.length === 0}>
           {data !== null ? (
             <Table
               head={
                 <tr>
-                  <th className="px-3 py-1.5 text-left font-semibold">{document}</th>
-                  <th className="px-3 py-1.5 text-left font-semibold">{party}</th>
-                  <th className="hidden px-3 py-1.5 text-left font-semibold sm:table-cell">Due</th>
-                  <th className="hidden px-3 py-1.5 text-right font-semibold md:table-cell">Days</th>
-                  <th className="px-3 py-1.5 text-left font-semibold">Bucket</th>
-                  <th className="px-3 py-1.5 text-right font-semibold">Outstanding</th>
+                  <th scope="col" className="px-3 py-2 text-left font-semibold">{document}</th>
+                  <th scope="col" className="px-3 py-2 text-left font-semibold">{party}</th>
+                  <th scope="col" className="hidden px-3 py-2 text-left font-semibold sm:table-cell">Due</th>
+                  <th scope="col" className="hidden px-3 py-2 text-right font-semibold md:table-cell">Days</th>
+                  <th scope="col" className="px-3 py-2 text-left font-semibold">Bucket</th>
+                  <th scope="col" className="px-3 py-2 text-right font-semibold">Outstanding</th>
                 </tr>
               }
             >

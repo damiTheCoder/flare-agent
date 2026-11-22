@@ -7,9 +7,9 @@ function ContactTable({ rows, kind }: { rows: Array<Customer | Vendor>; kind: st
     <Table
       head={
         <tr>
-          <th className="px-3 py-1.5 text-left font-semibold">{kind}</th>
-          <th className="px-3 py-1.5 text-left font-semibold">Email</th>
-          <th className="hidden px-3 py-1.5 text-left font-semibold sm:table-cell">Phone</th>
+          <th scope="col" className="px-3 py-2 text-left font-semibold">{kind}</th>
+          <th scope="col" className="px-3 py-2 text-left font-semibold">Email</th>
+          <th scope="col" className="hidden px-3 py-2 text-left font-semibold sm:table-cell">Phone</th>
         </tr>
       }
     >

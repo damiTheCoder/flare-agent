@@ -44,7 +44,7 @@ export function Composer({
           <button
             type="button"
             aria-label="Add"
-            className="grid h-7 w-7 place-items-center rounded-full text-neutral-500 hover:bg-white"
+            className="grid h-7 w-7 place-items-center rounded-full text-neutral-500 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M12 5v14M5 12h14" />
@@ -89,7 +89,7 @@ export function Composer({
               }
             }}
             placeholder="Message or run a task, / commands, @ files or sessions"
-            className="min-w-0 flex-1 bg-transparent px-1 text-[13px] text-neutral-800 placeholder:text-neutral-400 focus:outline-none"
+            className="min-w-0 flex-1 bg-transparent px-1 text-[13.5px] text-neutral-800 placeholder:text-neutral-400 focus:outline-none"
           />
 
           <div className="relative">
@@ -98,7 +98,7 @@ export function Composer({
               aria-haspopup="menu"
               aria-expanded={modelOpen}
               onClick={() => setModelOpen((open) => !open)}
-              className="flex h-7 max-w-[104px] items-center gap-1 rounded-full px-1.5 text-[11.5px] text-neutral-600 hover:bg-white sm:max-w-[160px] sm:text-[12px]"
+              className="flex h-7 max-w-[104px] items-center gap-1 rounded-full px-1.5 text-[11.5px] text-neutral-600 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15 sm:max-w-[160px] sm:text-[12px]"
             >
               <span className="truncate">{model}</span>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -129,7 +129,7 @@ export function Composer({
           <button
             type="button"
             aria-label="Voice input"
-            className="grid h-7 w-7 place-items-center rounded-full text-neutral-500 hover:bg-white"
+            className="grid h-7 w-7 place-items-center rounded-full text-neutral-500 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
               <rect x="9" y="3" width="6" height="11" rx="3" />
@@ -142,7 +142,7 @@ export function Composer({
             aria-label="Send"
             onClick={onSend}
             disabled={streaming || value.trim() === ""}
-            className="ml-0.5 grid h-7 w-7 place-items-center rounded-full bg-blue-600 text-white disabled:bg-neutral-300"
+            className="ml-0.5 grid h-7 w-7 place-items-center rounded-full bg-blue-600 text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30 focus-visible:ring-offset-1 disabled:bg-neutral-300"
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M5 10v4M9 7v10M13 4v16M17 8v8M21 11v2" />
@@ -152,7 +152,7 @@ export function Composer({
 
         <p
           data-testid="telemetry"
-          className="mt-1 flex flex-wrap items-center justify-center gap-x-1 gap-y-0 text-[10px] leading-4 text-neutral-400 sm:justify-end"
+          className="mt-1 flex flex-wrap items-center justify-center gap-x-1 gap-y-0 text-[10.5px] leading-4 text-neutral-400 sm:justify-end"
         >
           <span>
             {turns} turns {steps} steps

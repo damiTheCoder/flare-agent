@@ -3,10 +3,24 @@ import { money, type BalanceSheet, type ProfitLoss, type StatementLine } from ".
 import { useApi } from "../useApi";
 import { Cell, Page, PageState, Row, Table } from "./ui";
 
+function Metric({ label, amount, tone = "" }: { label: string; amount: string; tone?: string }) {
+  return (
+    <div className="rounded-lg border border-neutral-200 bg-white px-3.5 py-3">
+      <p className="text-[10.5px] font-medium uppercase tracking-[0.06em] text-neutral-400">{label}</p>
+      <p className={`mt-1 text-[18px] font-semibold leading-none tracking-[-0.01em] tabular-nums ${tone}`}>
+        {amount}
+      </p>
+    </div>
+  );
+}
+
 function Section({ label }: { label: string }) {
   return (
     <tr className="border-t border-neutral-100 bg-neutral-50/80">
-      <td colSpan={3} className="px-3 py-[5px] text-[10px] font-semibold uppercase tracking-[0.07em] text-neutral-500">
+      <td
+        colSpan={3}
+        className="px-3 py-[7px] text-[10.5px] font-semibold uppercase tracking-[0.06em] text-neutral-500"
+      >
         {label}
       </td>
     </tr>
@@ -17,7 +31,7 @@ function Lines({ lines }: { lines: StatementLine[] }) {
   if (lines.length === 0) {
     return (
       <tr className="border-t border-neutral-100">
-        <td colSpan={3} className="px-3 py-[6px] text-[12px] text-neutral-400">
+        <td colSpan={3} className="px-3 py-[9px] text-[12.5px] text-neutral-400">
           No balances
         </td>
       </tr>
@@ -27,7 +41,7 @@ function Lines({ lines }: { lines: StatementLine[] }) {
     <>
       {lines.map((line) => (
         <Row key={line.accountId}>
-          <Cell className="w-16 font-mono text-[11px] text-neutral-400">{line.code}</Cell>
+          <Cell className="w-16 font-mono text-[11.5px] text-neutral-400">{line.code}</Cell>
           <Cell>{line.name}</Cell>
           <Cell align="right">{money(line.amount)}</Cell>
         </Row>
@@ -39,11 +53,19 @@ function Lines({ lines }: { lines: StatementLine[] }) {
 function Total({ label, amount, strong = false }: { label: string; amount: string; strong?: boolean }) {
   return (
     <tr className={`border-t border-neutral-200 ${strong ? "bg-neutral-50" : ""}`}>
-      <td className="px-3 py-[6px]" />
-      <td className={`px-3 py-[6px] text-[12px] ${strong ? "font-semibold text-neutral-900" : "font-medium text-neutral-700"}`}>
+      <td className="px-3 py-[9px]" />
+      <td
+        className={`px-3 py-[9px] text-[12.5px] ${
+          strong ? "font-semibold text-neutral-900" : "font-medium text-neutral-700"
+        }`}
+      >
         {label}
       </td>
-      <td className={`px-3 py-[6px] text-right text-[12px] tabular-nums ${strong ? "font-semibold text-neutral-900" : "font-medium text-neutral-700"}`}>
+      <td
+        className={`px-3 py-[9px] text-right text-[12.5px] tabular-nums ${
+          strong ? "font-semibold text-neutral-900" : "font-medium text-neutral-700"
+        }`}
+      >
         {money(amount)}
       </td>
     </tr>
@@ -55,9 +77,15 @@ function StatementTable({ children }: { children: ReactNode }) {
     <Table
       head={
         <tr>
-          <th className="px-3 py-1.5 text-left font-semibold">Code</th>
-          <th className="px-3 py-1.5 text-left font-semibold">Line</th>
-          <th className="px-3 py-1.5 text-right font-semibold">Amount</th>
+          <th scope="col" className="px-3 py-2 text-left font-semibold">
+            Code
+          </th>
+          <th scope="col" className="px-3 py-2 text-left font-semibold">
+            Line
+          </th>
+          <th scope="col" className="px-3 py-2 text-right font-semibold">
+            Amount
+          </th>
         </tr>
       }
     >
@@ -78,29 +106,14 @@ export function ProfitLossPage() {
       <PageState loading={loading} error={error}>
         {data !== null ? (
           <>
-            <div className="mb-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2">
-                <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-neutral-400">Revenue</p>
-                <p className="mt-0.5 text-[15px] font-semibold tabular-nums text-neutral-900">
-                  {money(data.totalRevenue)}
-                </p>
-              </div>
-              <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2">
-                <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-neutral-400">Expenses</p>
-                <p className="mt-0.5 text-[15px] font-semibold tabular-nums text-neutral-900">
-                  {money(data.totalExpenses)}
-                </p>
-              </div>
-              <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2">
-                <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-neutral-400">Net income</p>
-                <p
-                  className={`mt-0.5 text-[15px] font-semibold tabular-nums ${
-                    Number(data.netIncome) < 0 ? "text-rose-600" : "text-emerald-700"
-                  }`}
-                >
-                  {money(data.netIncome)}
-                </p>
-              </div>
+            <div className="mb-3 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+              <Metric label="Revenue" amount={money(data.totalRevenue)} />
+              <Metric label="Expenses" amount={money(data.totalExpenses)} />
+              <Metric
+                label="Net income"
+                amount={money(data.netIncome)}
+                tone={Number(data.netIncome) < 0 ? "text-rose-600" : "text-emerald-700"}
+              />
             </div>
 
             <StatementTable>
@@ -127,25 +140,10 @@ export function BalanceSheetPage() {
       <PageState loading={loading} error={error}>
         {data !== null ? (
           <>
-            <div className="mb-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2">
-                <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-neutral-400">Total assets</p>
-                <p className="mt-0.5 text-[15px] font-semibold tabular-nums text-neutral-900">
-                  {money(data.totalAssets)}
-                </p>
-              </div>
-              <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2">
-                <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-neutral-400">Liabilities</p>
-                <p className="mt-0.5 text-[15px] font-semibold tabular-nums text-neutral-900">
-                  {money(data.totalLiabilities)}
-                </p>
-              </div>
-              <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2">
-                <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-neutral-400">Equity</p>
-                <p className="mt-0.5 text-[15px] font-semibold tabular-nums text-neutral-900">
-                  {money(data.totalEquity)}
-                </p>
-              </div>
+            <div className="mb-3 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+              <Metric label="Total assets" amount={money(data.totalAssets)} />
+              <Metric label="Liabilities" amount={money(data.totalLiabilities)} />
+              <Metric label="Equity" amount={money(data.totalEquity)} />
             </div>
 
             <StatementTable>

@@ -12,14 +12,14 @@ export function SalesPage() {
           <Table
             head={
               <tr>
-                <th className="px-3 py-1.5 text-left font-semibold">Invoice</th>
-                <th className="px-3 py-1.5 text-left font-semibold">Customer</th>
-                <th className="hidden px-3 py-1.5 text-left font-semibold sm:table-cell">Date</th>
-                <th className="hidden px-3 py-1.5 text-left font-semibold md:table-cell">Due</th>
-                <th className="px-3 py-1.5 text-right font-semibold">Total</th>
-                <th className="px-3 py-1.5 text-right font-semibold">Paid</th>
-                <th className="px-3 py-1.5 text-right font-semibold">Outstanding</th>
-                <th className="px-3 py-1.5 text-left font-semibold">Status</th>
+                <th scope="col" className="px-3 py-2 text-left font-semibold">Invoice</th>
+                <th scope="col" className="px-3 py-2 text-left font-semibold">Customer</th>
+                <th scope="col" className="hidden px-3 py-2 text-left font-semibold sm:table-cell">Date</th>
+                <th scope="col" className="hidden px-3 py-2 text-left font-semibold md:table-cell">Due</th>
+                <th scope="col" className="px-3 py-2 text-right font-semibold">Total</th>
+                <th scope="col" className="px-3 py-2 text-right font-semibold">Paid</th>
+                <th scope="col" className="px-3 py-2 text-right font-semibold">Outstanding</th>
+                <th scope="col" className="px-3 py-2 text-left font-semibold">Status</th>
               </tr>
             }
           >
@@ -56,15 +56,15 @@ export function PurchasesPage() {
           <Table
             head={
               <tr>
-                <th className="px-3 py-1.5 text-left font-semibold">Bill</th>
-                <th className="px-3 py-1.5 text-left font-semibold">Vendor</th>
-                <th className="hidden px-3 py-1.5 text-left font-semibold sm:table-cell">Date</th>
-                <th className="px-3 py-1.5 text-right font-semibold">Total</th>
-                <th className="hidden px-3 py-1.5 text-right font-semibold md:table-cell">WHT</th>
-                <th className="px-3 py-1.5 text-right font-semibold">Net payable</th>
-                <th className="px-3 py-1.5 text-right font-semibold">Paid</th>
-                <th className="px-3 py-1.5 text-right font-semibold">Outstanding</th>
-                <th className="px-3 py-1.5 text-left font-semibold">Status</th>
+                <th scope="col" className="px-3 py-2 text-left font-semibold">Bill</th>
+                <th scope="col" className="px-3 py-2 text-left font-semibold">Vendor</th>
+                <th scope="col" className="hidden px-3 py-2 text-left font-semibold sm:table-cell">Date</th>
+                <th scope="col" className="px-3 py-2 text-right font-semibold">Total</th>
+                <th scope="col" className="hidden px-3 py-2 text-right font-semibold md:table-cell">WHT</th>
+                <th scope="col" className="px-3 py-2 text-right font-semibold">Net payable</th>
+                <th scope="col" className="px-3 py-2 text-right font-semibold">Paid</th>
+                <th scope="col" className="px-3 py-2 text-right font-semibold">Outstanding</th>
+                <th scope="col" className="px-3 py-2 text-left font-semibold">Status</th>
               </tr>
             }
           >

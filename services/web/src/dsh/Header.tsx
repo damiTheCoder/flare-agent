@@ -11,7 +11,7 @@ type Props = {
 };
 
 const menuItem =
-  "flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] text-neutral-700 hover:bg-neutral-100";
+  "flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] text-neutral-700 transition-colors hover:bg-neutral-100 focus-visible:bg-neutral-100 focus-visible:outline-none";
 
 export function Header({ title, onToggleSidebar, onCopyMarkdown, onDownloadLog }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -41,7 +41,7 @@ export function Header({ title, onToggleSidebar, onCopyMarkdown, onDownloadLog }
         type="button"
         aria-label="Toggle sidebar"
         onClick={onToggleSidebar}
-        className="grid h-7 w-7 place-items-center rounded-md text-neutral-500 hover:bg-neutral-100"
+        className="grid h-8 w-8 place-items-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
       >
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
           <rect x="3" y="4" width="18" height="16" rx="2.5" />
@@ -54,7 +54,7 @@ export function Header({ title, onToggleSidebar, onCopyMarkdown, onDownloadLog }
       </span>
       <span className="hidden text-[13px] font-semibold tracking-tight text-neutral-900 sm:inline">MicroBalance</span>
 
-      <span className="pointer-events-none absolute left-1/2 max-w-[42%] -translate-x-1/2 truncate text-[11.5px] text-neutral-500 sm:max-w-[46%] sm:text-[12px]">
+      <span className="pointer-events-none absolute left-1/2 max-w-[42%] -translate-x-1/2 truncate text-[12px] text-neutral-500 sm:max-w-[46%] sm:text-[12.5px]">
         {title}
       </span>
 
@@ -65,7 +65,7 @@ export function Header({ title, onToggleSidebar, onCopyMarkdown, onDownloadLog }
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((open) => !open)}
-          className="grid h-7 w-7 place-items-center rounded-md text-neutral-500 hover:bg-neutral-100"
+          className="grid h-8 w-8 place-items-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
             <circle cx="5" cy="12" r="1.5" />
@@ -78,7 +78,7 @@ export function Header({ title, onToggleSidebar, onCopyMarkdown, onDownloadLog }
           <div
             role="menu"
             data-testid="session-menu"
-            className="absolute right-0 top-9 z-50 w-56 rounded-xl border border-neutral-200 bg-white p-1.5 shadow-[0_16px_48px_rgba(16,16,20,0.18)]"
+            className="absolute right-0 top-10 z-50 w-56 rounded-xl border border-neutral-200 bg-white p-1.5 shadow-[0_12px_32px_rgba(16,16,20,0.14)]"
           >
             <button
               type="button"
