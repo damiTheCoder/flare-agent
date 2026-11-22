@@ -25,7 +25,9 @@ class AlwaysToolProvider:
         )
         return LLMResponse(content=content, model=self.model, usage=LLMUsage())
 
-    async def stream(self, messages, *, model=None, temperature=None, tools: list[dict] | None = None):
+    async def stream(
+        self, messages, *, model=None, temperature=None, tools: list[dict] | None = None
+    ):
         resp = await self.chat(messages, model=model, temperature=temperature)
         yield resp.content
 
@@ -47,9 +49,45 @@ class FixedDecisionProvider:
             content = json.dumps({"action": "final", "answer": f"完成: {messages[-1].content}"})
         return LLMResponse(content=content, model=self.model, usage=LLMUsage())
 
-    async def stream(self, messages, *, model=None, temperature=None, tools: list[dict] | None = None):
+    async def stream(
+        self, messages, *, model=None, temperature=None, tools: list[dict] | None = None
+    ):
         resp = await self.chat(messages, model=model, temperature=temperature)
         yield resp.content
+
+
+class CjkAnswerProvider:
+    """Answers in Chinese, then translates when the guard asks."""
+
+    model = "cjk"
+
+    async def chat(
+        self, messages, *, model=None, temperature=None, max_tokens=None, tools=None
+    ) -> LLMResponse:
+        translating = any("Translate" in (message.content or "") for message in messages)
+        answer = "Hello, I am MicroBalance." if translating else "你好，我是 MicroBalance。"
+        return LLMResponse(
+            content=json.dumps({"action": "final", "answer": answer}),
+            model=self.model,
+            usage=LLMUsage(),
+        )
+
+    async def stream(
+        self, messages, *, model=None, temperature=None, tools: list[dict] | None = None
+    ):
+        resp = await self.chat(messages, model=model, temperature=temperature)
+        yield resp.content
+
+
+async def test_final_answer_is_forced_to_english() -> None:
+    agent = build_react_agent(
+        CjkAnswerProvider(), create_default_registry(), checkpointer=MemorySaver()
+    )
+    result = await agent.ainvoke(
+        {"task_input": "请用中文回答"}, {"configurable": {"thread_id": "cjk"}}
+    )
+    assert result["status"] == "completed"
+    assert result["output"] == "Hello, I am MicroBalance."
 
 
 async def test_react_loop_completes_with_tool() -> None:

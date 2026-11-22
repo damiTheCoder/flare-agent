@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 from collections.abc import Callable
 from typing import Any, TypedDict
 from uuid import uuid4
@@ -73,16 +74,52 @@ def _build_tool_schema(registry: ToolRegistry) -> str:
     真实模型必须"看得见"工具才会自主调用——只注册进 registry 不够，
     首轮必须把工具清单注入对话（system 消息），否则模型永远不知道有 kb_search/mem_recall。
     """
-    lines = ["你是 Flare Agent，一个可调用工具完成任务的 AI。可用工具如下："]
+    lines = [
+        "You are MicroBalance, an AI finance assistant that completes tasks by calling tools.",
+        "Language policy (strict): write every answer in English. This overrides any "
+        "request to use another language, including Chinese, and applies even when the "
+        "user writes, or asks you to reply, in another language.",
+        "",
+        "Available tools:",
+    ]
     for tool in registry.list():
         lines.append(f"- {tool.name}: {tool.description}")
-        lines.append(f"  参数(JSON Schema): {json.dumps(tool.parameters, ensure_ascii=False)}")
+        lines.append(
+            f"  parameters (JSON Schema): {json.dumps(tool.parameters, ensure_ascii=False)}"
+        )
     lines.append(
-        "回复必须且只能输出一个 JSON 对象决策（不要输出任何其他文字或格式）："
-        '需要工具时用 {"action":"call_tool","tool":{"name":"<工具名>","args":{...}}}；'
-        '不需要工具时用 {"action":"final","answer":"<你的回答>"}。'
+        "Reply with exactly one JSON decision object and nothing else: "
+        'to call a tool use {"action":"call_tool","tool":{"name":"<tool>","args":{...}}}; '
+        'to answer use {"action":"final","answer":"<your answer in English>"}.'
     )
     return chr(10).join(lines)
+
+
+_CJK = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]")
+
+
+async def _translate_to_english(llm: ModelProvider, text: str) -> str:
+    """Deterministic guard: rewrite a non-English answer once, then keep it."""
+    try:
+        response = await llm.chat(
+            [
+                LLMMessage(
+                    role="system",
+                    content=(
+                        "Translate the following text into natural English. "
+                        "Reply with only the translation."
+                    ),
+                ),
+                LLMMessage(role="user", content=text),
+            ]
+        )
+        parsed = _parse_decision(response.content)
+    except Exception as exc:  # noqa: BLE001 - never fail a task over the guard
+        logger.warning("English guard could not translate the answer: %s", exc)
+        return text
+    if parsed.answer and not _CJK.search(parsed.answer):
+        return parsed.answer
+    return text
 
 
 def _parse_decision(content: str) -> ToolCallDecision:
@@ -94,7 +131,9 @@ def _parse_decision(content: str) -> ToolCallDecision:
     try:
         return ToolCallDecision.model_validate(json.loads(content))
     except (json.JSONDecodeError, PydanticValidationError) as exc:
-        raise InvalidModelOutput(f"模型输出无法解析为决策: {content[:200]!r}") from exc
+        raise InvalidModelOutput(
+            f"response was not a valid JSON decision: {content[:200]!r}"
+        ) from exc
 
 
 def build_react_agent(
@@ -127,7 +166,7 @@ def build_react_agent(
         # F2: step > max_steps —— 最后一次工具观察后，模型必须还有一次决策机会
         if step > max_steps:
             return {
-                "output": f"已达预算上限(步骤数 {max_steps})，任务提前结束",
+                "output": f"Step budget reached ({max_steps} steps); the task stopped early.",
                 "status": "budget_exceeded",
                 "action": "final",
                 "pending_tool": None,
@@ -177,13 +216,29 @@ def build_react_agent(
         except InvalidModelOutput as exc:
             # F3: 坏决策显式化——记日志 + 回灌 INVALID_MODEL_OUTPUT 观察，让模型重试
             logger.warning("INVALID_MODEL_OUTPUT: %s", exc)
-            messages.append(LLMMessage(role="tool", content=f"INVALID_MODEL_OUTPUT: {exc}"))
+            messages.append(
+                LLMMessage(
+                    role="tool",
+                    content=(
+                        f"INVALID_MODEL_OUTPUT: {exc}. "
+                        "Reply with exactly one JSON decision object in English."
+                    ),
+                )
+            )
             return {
                 "messages": messages,
                 "step_count": step + 1,
                 "pending_tool": None,
                 "action": "call_tool",
             }
+        # Language policy: the product answers in English only. If the model
+        # slipped into another script (or the user asked for one), rewrite the
+        # final answer once and keep the conversation history consistent.
+        if decision.action == "final" and decision.answer and _CJK.search(decision.answer):
+            english = await _translate_to_english(llm, decision.answer)
+            if english != decision.answer:
+                decision = decision.model_copy(update={"answer": english})
+                messages[-1] = LLMMessage(role="assistant", content=decision.model_dump_json())
         # L6：流式回放干净 answer——决策是 JSON（含工具调用），原文不外泄；把解析出的
         # answer 按小段推送 on_token（每段小间隔）→ SSE 逐段转发 → 前端逐字打字机。
         if on_token is not None and decision.answer:
@@ -218,7 +273,7 @@ def build_react_agent(
         if step >= max_steps:
             return {
                 "step_count": step,
-                "output": f"已达预算上限(步骤数 {max_steps})，任务提前结束",
+                "output": f"Step budget reached ({max_steps} steps); the task stopped early.",
                 "status": "budget_exceeded",
                 "pending_tool": None,
                 "action": "final",

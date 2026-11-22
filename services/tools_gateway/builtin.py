@@ -37,7 +37,7 @@ def create_default_registry(sandbox=None) -> ToolRegistry:
     registry.register(
         Tool(
             name="echo",
-            description="把 text 参数原样返回，用于验证工具链路。",
+            description="Return the text argument unchanged; used to verify the tool pipeline.",
             parameters={
                 "type": "object",
                 "properties": {"text": {"type": "string"}},
