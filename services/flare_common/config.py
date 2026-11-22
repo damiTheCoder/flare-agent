@@ -30,10 +30,11 @@ class Settings(BaseSettings):
     object_store_access_key: str = "minioadmin"
     object_store_secret_key: str = "minioadmin"
 
-    # 供应商：mock | openai | anthropic（Claude 原生）；openai 兼容 DashScope/DeepSeek
-    model_provider: str = "mock"
+    # 供应商：openai | anthropic（Claude 原生）；openai 兼容 DashScope/DeepSeek/vLLM
+    # mock 仅用于测试：显式设置 FLARE_MODEL_PROVIDER=mock 才会启用
+    model_provider: str = "openai"
     model_api_key: str = ""
-    model_base_url: str = "http://localhost:9001/v1"  # 本地 vLLM 默认端口
+    model_base_url: str = "https://api.openai.com/v1"
     model_name: str = "gpt-4o-mini"
     # 模型设置页（控制台「模型」）本地持久化位置；真实环境变量优先于该文件
     model_config_path: str = "data/model_config.json"

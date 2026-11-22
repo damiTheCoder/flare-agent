@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import AsyncIterator
 
 import httpx
@@ -19,6 +20,8 @@ from model_gateway.anthropic_compat import AnthropicCompatibleProvider
 from model_gateway.mock import MockModelProvider
 from model_gateway.openai_compat import OpenAICompatibleProvider, ProviderError
 from model_gateway.providers import LLMMessage, LLMResponse, ModelProvider
+
+logger = logging.getLogger(__name__)
 
 
 class RetryProvider:
@@ -98,7 +101,14 @@ def build_provider(settings: Settings) -> ModelProvider:
     - anthropic = Claude Messages 原生协议（/v1/messages + x-api-key 认证）
     """
     if settings.model_provider == "mock":
+        logger.warning("mock model provider selected: replies are deterministic, not a real LLM")
         return MockModelProvider()
+    if settings.model_provider in {"openai", "anthropic"} and not settings.model_api_key:
+        logger.warning(
+            "model provider %r has no API key: set OPENAI_API_KEY or DEEPSEEK_API_KEY "
+            "(or FLARE_MODEL_API_KEY) before sending a message",
+            settings.model_provider,
+        )
     if settings.model_provider == "openai":
         base = OpenAICompatibleProvider(
             api_key=settings.model_api_key,

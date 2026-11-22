@@ -1,9 +1,9 @@
-"""SQLite persistence for the accounting tools.
+"""Persistence for the accounting tools.
 
-One database file holds every tenant; every row carries ``company_id`` and
-every query filters on it, so a tool can never read or write another
-company's books. A tenant is provisioned with a standard chart of accounts
-the first time it is used (the old core did the same via its seed).
+One SQL database holds every tenant; every row carries ``company_id`` and every
+query filters on it, so a tool can never read or write another company's books.
+A tenant is provisioned with a standard chart of accounts the first time it is
+used (the old core did the same via its seed).
 """
 
 from __future__ import annotations
@@ -11,14 +11,14 @@ from __future__ import annotations
 import json
 import os
 import re
-import sqlite3
-import threading
 import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
-from pathlib import Path
 from typing import Any
 
+from sqlalchemy.engine import Engine
+
+from tools_gateway.accounting import db
 from tools_gateway.accounting.errors import (
     NO_ORGANIZATION,
     UNAUTHORIZED,
@@ -290,42 +290,84 @@ CREATE TABLE IF NOT EXISTS audit_log (
 );
 """
 
-_connection: sqlite3.Connection | None = None
-_override_path: str | None = None
-_lock = threading.Lock()
+_SCHEMA_STATEMENTS = [statement.strip() for statement in _SCHEMA.split(";") if statement.strip()]
+_COLUMNS: dict[str, set[str]] = {}
 
 
-def _default_path() -> Path:
-    configured = os.environ.get("FLARE_ACCOUNTING_DB")
-    if configured:
-        return Path(configured).expanduser()
-    return Path(__file__).resolve().parents[3] / ".data" / "accounting.db"
+class _Result:
+    """Materialised cursor: enough of the DB-API surface for this module."""
+
+    __slots__ = ("_rows", "rowcount")
+
+    def __init__(self, rows: list[dict[str, Any]], rowcount: int) -> None:
+        self._rows = rows
+        self.rowcount = rowcount
+
+    def fetchone(self) -> dict[str, Any] | None:
+        return self._rows[0] if self._rows else None
+
+    def fetchall(self) -> list[dict[str, Any]]:
+        return self._rows
 
 
-def connect() -> sqlite3.Connection:
-    """Return the process-wide connection, creating the schema on first use."""
-    global _connection
-    with _lock:
-        if _connection is None:
-            path = Path(_override_path) if _override_path else _default_path()
-            if str(path) != ":memory:":
-                path.parent.mkdir(parents=True, exist_ok=True)
-            connection = sqlite3.connect(str(path), check_same_thread=False)
-            connection.row_factory = sqlite3.Row
-            connection.executescript(_SCHEMA)
-            connection.commit()
-            _connection = connection
-        return _connection
+class _Connection:
+    """Small DB-API shaped facade over a pooled SQLAlchemy engine.
+
+    ``execute`` outside a ``with`` block runs in its own autocommitted
+    transaction; inside ``with connection:`` every statement joins one
+    transaction that commits on success and rolls back on error.
+    """
+
+    def __init__(self, engine: Engine) -> None:
+        self._engine = engine
+        self._connection: Any = None
+        self._postgres = engine.dialect.name != "sqlite"
+
+    def _statement(self, sql: str) -> str:
+        # SQLAlchemy's exec_driver_sql keeps the DB-API paramstyle; psycopg
+        # wants ``%s`` where sqlite wanted ``?``.
+        return sql.replace("?", "%s") if self._postgres else sql
+
+    def _run(self, connection: Any, sql: str, params: Any) -> _Result:
+        result = connection.exec_driver_sql(self._statement(sql), tuple(params))
+        rows = [dict(row._mapping) for row in result] if result.returns_rows else []
+        return _Result(rows, result.rowcount)
+
+    def execute(self, sql: str, params: Any = ()) -> _Result:
+        if self._connection is not None:
+            return self._run(self._connection, sql, params)
+        with self._engine.begin() as connection:
+            return self._run(connection, sql, params)
+
+    def __enter__(self) -> _Connection:
+        self._connection = self._engine.connect()
+        self._transaction = self._connection.begin()
+        return self
+
+    def __exit__(self, exc_type: object, exc: object, traceback: object) -> bool:
+        try:
+            if exc_type is None:
+                self._transaction.commit()
+            else:
+                self._transaction.rollback()
+        finally:
+            self._connection.close()
+            self._connection = None
+            self._transaction = None
+        return False
+
+
+def connect() -> _Connection:
+    """Return a handle to the accounting database, creating the schema once."""
+    db.ensure_schema(_SCHEMA_STATEMENTS)
+    return _Connection(db.get_engine())
 
 
 def reset_for_tests(path: str) -> None:
     """Point the module at a fresh database (tests only)."""
-    global _connection, _override_path
-    with _lock:
-        if _connection is not None:
-            _connection.close()
-        _connection = None
-        _override_path = path
+    _COLUMNS.clear()
+    url = "sqlite+pysqlite:///:memory:" if path == ":memory:" else f"sqlite+pysqlite:///{path}"
+    db.reset_engine(url)
 
 
 def new_id(prefix: str) -> str:
@@ -1122,15 +1164,13 @@ def mark_bank_reconciled(
 # ---------------------------------------------------------------------------
 
 _IDENT = re.compile(r"^[a-z][a-z0-9_]*$")
-_COLUMNS: dict[str, set[str]] = {}
 
 
 def _columns(table: str) -> set[str]:
     if not _IDENT.match(table):
         raise ValueError(f"invalid table name {table!r}")
     if table not in _COLUMNS:
-        rows = connect().execute(f"PRAGMA table_info({table})").fetchall()
-        _COLUMNS[table] = {row["name"] for row in rows}
+        _COLUMNS[table] = db.table_columns(table)
     return _COLUMNS[table]
 
 

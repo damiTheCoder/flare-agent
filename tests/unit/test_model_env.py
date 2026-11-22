@@ -22,11 +22,13 @@ def _clean(monkeypatch) -> None:
         monkeypatch.delenv(name, raising=False)
 
 
-def test_defaults_to_mock_without_keys(monkeypatch) -> None:
+def test_defaults_to_real_provider_without_keys(monkeypatch) -> None:
+    """Production default is a real provider; it only lacks a credential."""
     _clean(monkeypatch)
     settings = Settings()
-    assert settings.model_provider == "mock"
+    assert settings.model_provider == "openai"
     assert settings.model_api_key == ""
+    assert settings.model_base_url == "https://api.openai.com/v1"
 
 
 def test_deepseek_key_switches_to_openai_protocol(monkeypatch) -> None:

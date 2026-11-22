@@ -11,6 +11,7 @@ import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 
@@ -51,6 +52,7 @@ from skills.registry import SkillRegistry
 from skills.skill_tools import build_skill_tools
 from subagent.runtime import SubagentRuntime
 from subagent.sub_tools import build_subagent_tools
+from tools_gateway.accounting import db as accounting_db
 from tools_gateway.builtin import create_default_registry
 
 logger = logging.getLogger(__name__)
@@ -272,6 +274,19 @@ def create_app(
     @app.get("/health", tags=["system"])
     async def health() -> dict[str, str]:
         return {"status": "ok", "env": settings.env}
+
+    @app.get("/api/health", tags=["system"])
+    async def api_health() -> JSONResponse:
+        """Deployment probe: the process is up only if the database answers."""
+        try:
+            await run_in_threadpool(accounting_db.ping)
+        except Exception:
+            logger.exception("database health check failed")
+            return JSONResponse(
+                status_code=503,
+                content={"status": "error", "database": "unavailable"},
+            )
+        return JSONResponse(content={"status": "ok", "database": "ok"})
 
     @app.get("/version", tags=["system"])
     async def version() -> dict[str, str]:

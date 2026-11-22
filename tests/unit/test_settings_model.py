@@ -23,9 +23,15 @@ from tools_gateway.builtin import create_default_registry
 
 
 def _settings(tmp_path: Path) -> Settings:
+    """Isolated settings for the model-settings API.
+
+    The production default is a real provider; these tests pin the deterministic
+    provider so the connectivity probe never leaves the machine.
+    """
     return Settings(
         _env_file=None,
         env="test",
+        model_provider="mock",
         model_config_path=str(tmp_path / "model_config.json"),
     )
 
@@ -49,7 +55,7 @@ def _router_app(tmp_path: Path, tm: TaskManager | None = None):
     return app, store
 
 
-def test_default_is_mock_and_sanitized(tmp_path: Path) -> None:
+def test_effective_is_mock_and_sanitized(tmp_path: Path) -> None:
     store = ModelConfigStore(_settings(tmp_path))
     eff = store.effective()
     assert eff["provider"] == "mock" and eff["model_name"]

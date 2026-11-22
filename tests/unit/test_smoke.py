@@ -17,7 +17,7 @@ def test_settings_defaults() -> None:
     s = Settings(_env_file=None)
     assert s.app_name == "flare-agent"
     assert s.env == "dev"
-    assert s.model_provider == "mock"
+    assert s.model_provider == "openai"
 
 
 def test_settings_from_env() -> None:

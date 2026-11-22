@@ -7,6 +7,7 @@ create_app() 保持纯 API（可测）；Web 构建产物(services/web/dist)在�
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from fastapi.staticfiles import StaticFiles
@@ -29,7 +30,7 @@ app = create_app(
 
 
 class SpaStaticFiles(StaticFiles):
-    """Serve the SPA shell for unknown paths instead of a bare 404."""
+    """Serve the SPA shell for unknown paths; API paths keep honest 404s."""
 
     async def get_response(self, path, scope):  # type: ignore[override]
         try:
@@ -37,9 +38,16 @@ class SpaStaticFiles(StaticFiles):
         except StarletteHTTPException as exc:
             if exc.status_code != 404:
                 raise
+            request_path = scope.get("path", "")
+            if request_path.startswith(("/api/", "/v1/", "/mcp")):
+                raise
             return await super().get_response("index.html", scope)
 
 
-_web_dist = Path(__file__).resolve().parents[1] / "web" / "dist"
+# Docker copies the build to /app/static and sets FLARE_WEB_DIST; a local
+# `npm run build` is picked up from services/web/dist with no configuration.
+_web_dist = Path(
+    os.environ.get("FLARE_WEB_DIST") or (Path(__file__).resolve().parents[1] / "web" / "dist")
+)
 if _web_dist.is_dir():
     app.mount("/", SpaStaticFiles(directory=str(_web_dist), html=True), name="web")
