@@ -24,7 +24,7 @@ const INTEGRATIONS = ["Google Drive", "Gmail", "Google Calendar"];
 const MAX_INPUT_HEIGHT = 200;
 
 const control =
-  "grid h-8 w-8 shrink-0 place-items-center rounded-full text-neutral-500 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15";
+  "grid h-9 w-9 shrink-0 place-items-center rounded-full text-neutral-500 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15";
 
 export function Composer({
   value,
@@ -55,7 +55,7 @@ export function Composer({
   return (
     <div className="px-3 pb-2 sm:px-5">
       <div className="mx-auto w-full max-w-[780px]">
-        <div className="rounded-2xl bg-neutral-100 px-2 pb-2 pt-2.5 transition-shadow focus-within:ring-1 focus-within:ring-neutral-900/10">
+        <div className="rounded-2xl bg-neutral-100 px-2.5 pb-2.5 pt-3 transition-shadow focus-within:ring-1 focus-within:ring-neutral-900/10">
           <textarea
             ref={inputRef}
             rows={1}
@@ -69,12 +69,12 @@ export function Composer({
             }}
             placeholder="Message or run a task, / commands, @ files or sessions"
             aria-label="Message"
-            className="block max-h-[200px] min-h-[26px] w-full resize-none overflow-y-auto bg-transparent px-2 text-[13.5px] leading-[26px] text-neutral-800 placeholder:text-neutral-400 focus:outline-none"
+            className="block max-h-[200px] min-h-[28px] w-full resize-none overflow-y-auto bg-transparent px-2.5 text-[14.5px] leading-[28px] text-neutral-800 placeholder:text-neutral-400 focus:outline-none"
           />
 
-          <div className="mt-1 flex items-center gap-0.5">
+          <div className="mt-1.5 flex items-center gap-0.5">
             <button type="button" aria-label="Add" className={control}>
-              <Plus size={iconSize.md} strokeWidth={iconStroke} aria-hidden="true" />
+              <Plus size={iconSize.lg} strokeWidth={iconStroke} aria-hidden="true" />
             </button>
 
             <div className="relative hidden sm:block">
@@ -84,9 +84,9 @@ export function Composer({
                 aria-expanded={integrationsOpen}
                 aria-label="Integrations"
                 onClick={() => setIntegrationsOpen((open) => !open)}
-                className="flex h-8 items-center gap-1 rounded-full px-1.5 text-neutral-500 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
+                className="flex h-9 items-center gap-1 rounded-full px-2 text-neutral-500 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
               >
-                <Plug size={iconSize.md} strokeWidth={iconStroke} aria-hidden="true" />
+                <Plug size={iconSize.lg} strokeWidth={iconStroke} aria-hidden="true" />
               </button>
               {integrationsOpen ? (
                 <div className="absolute bottom-full left-0 z-40 mb-1 w-44 rounded-xl border border-neutral-200 bg-white p-1.5 shadow-xl">
@@ -111,10 +111,10 @@ export function Composer({
                 aria-haspopup="menu"
                 aria-expanded={modelOpen}
                 onClick={() => setModelOpen((open) => !open)}
-                className="flex h-8 max-w-[104px] items-center gap-1 rounded-full px-1.5 text-[11.5px] text-neutral-600 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15 sm:max-w-[160px] sm:text-[12px]"
+                className="flex h-9 max-w-[112px] items-center gap-1 rounded-full px-2 text-[12.5px] text-neutral-600 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15 sm:max-w-[176px] sm:text-[13px]"
               >
                 <span className="truncate">{model}</span>
-                <ChevronDown size={iconSize.xs} strokeWidth={iconStroke} aria-hidden="true" />
+                <ChevronDown size={iconSize.sm} strokeWidth={iconStroke} aria-hidden="true" />
               </button>
               {modelOpen ? (
                 <div className="absolute bottom-full right-0 z-40 mb-1 w-44 rounded-xl border border-neutral-200 bg-white p-1.5 shadow-xl">
@@ -146,7 +146,7 @@ export function Composer({
             </div>
 
             <button type="button" aria-label="Voice input" className={control}>
-              <Mic size={iconSize.md} strokeWidth={iconStroke} aria-hidden="true" />
+              <Mic size={iconSize.lg} strokeWidth={iconStroke} aria-hidden="true" />
             </button>
 
             <button
@@ -154,16 +154,16 @@ export function Composer({
               aria-label="Send"
               onClick={onSend}
               disabled={streaming || value.trim() === ""}
-              className="ml-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-blue-600 text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30 focus-visible:ring-offset-1 disabled:bg-neutral-300"
+              className="ml-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-blue-600 text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30 focus-visible:ring-offset-1 disabled:bg-neutral-300"
             >
-              <ArrowUp size={iconSize.md} strokeWidth={iconStroke} aria-hidden="true" />
+              <ArrowUp size={iconSize.lg} strokeWidth={iconStroke} aria-hidden="true" />
             </button>
           </div>
         </div>
 
         <p
           data-testid="telemetry"
-          className="mt-1 hidden flex-wrap items-center justify-center gap-x-1 gap-y-0 text-[10.5px] leading-4 text-neutral-400 sm:flex sm:justify-end"
+          className="mt-1.5 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0 text-[11px] leading-4 text-neutral-400 sm:justify-end"
         >
           <span>
             {turns} turns {steps} steps
@@ -174,8 +174,8 @@ export function Composer({
           <span>{tokens.toLocaleString()} tok</span>
           <span>•</span>
           <span>Cache hit {cacheHit}%</span>
-          <span className="mx-1 hidden text-neutral-300 sm:inline">|</span>
-          <span className="hidden sm:inline">{contextUsed}%</span>
+          <span className="mx-1 text-neutral-300">|</span>
+          <span>{contextUsed}%</span>
         </p>
       </div>
     </div>
