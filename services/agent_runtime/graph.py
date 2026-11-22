@@ -156,12 +156,12 @@ def build_react_agent(
             messages.append(LLMMessage(role="user", content=content))
         tools = _build_tools_json(registry) if registry.list() else None
         # L6：真·token 级流式——llm.stream 逐段收集决策（不直接外发：模型输出的是
-        # JSON 决策文本，原文不可见，见下方 answer 回放）。注意：上游(OpenCode Zen)对
-        # stream+tools 会断连(ConnectError)，故 stream 不带 tools 参数（工具 schema 已在
-        # system 提示中）；stream 异常时降级一次性 chat（带 tools）兜底，保证任务稳定。
+        # JSON 决策文本，原文不可见，见下方 answer 回放）。原生 function-calling 随
+        # 流式请求下发：DeepSeek/OpenAI 以 tool_calls delta 返回；不支持的上游会在
+        # 建连阶段报错，由下方一次性 chat 兜底。
         parts: list[str] = []
         try:
-            async for delta in llm.stream(messages):
+            async for delta in llm.stream(messages, tools=tools):
                 parts.append(delta)
         except Exception as exc:  # noqa: BLE001 - 流式不稳定时降级 chat 兜底
             logger.warning("llm.stream 失败(%s)，降级 chat 兜底", exc)

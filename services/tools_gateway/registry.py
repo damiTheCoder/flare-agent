@@ -12,6 +12,7 @@ from typing import Any, Protocol
 import jsonschema
 
 from flare_common.errors import NotFoundError, ValidationError
+from flare_common.tenant import get_request_tenant
 
 
 @dataclass
@@ -97,7 +98,13 @@ class ToolRegistry:
         工具内部错误不向上抛，转为结构化失败结果，便于 Agent 观察后重试/换路。
         """
         tool = self.get(name)
-        params = args or {}
+        params = dict(args or {})
+        # Accounting tools declare companyId; the agent should never have to
+        # guess it. REST callers pass it explicitly, so this is a no-op there.
+        properties = (tool.parameters or {}).get("properties") or {}
+        tenant = get_request_tenant()
+        if "companyId" in properties and not params.get("companyId") and tenant is not None:
+            params["companyId"] = tenant
         try:
             jsonschema.validate(instance=params, schema=tool.parameters)
         except jsonschema.ValidationError as exc:

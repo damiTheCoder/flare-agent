@@ -72,14 +72,20 @@ def _serialize_messages(messages: list[LLMMessage]) -> list[dict]:
                 continue
             wire.append({"role": "assistant", "content": m.content})
         elif m.role == "tool":
-            wire.append(
-                {
-                    "role": "tool",
-                    "tool_call_id": pending_tool_call_id or "call_legacy",
-                    "content": m.content,
-                }
-            )
-            pending_tool_call_id = None
+            if pending_tool_call_id is None:
+                # Observation without a preceding tool_call (e.g. a parser
+                # correction). Strict APIs reject role=tool without an id, so
+                # replay it as user context instead of a malformed message.
+                wire.append({"role": "user", "content": f"Tool observation:\n{m.content}"})
+            else:
+                wire.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": pending_tool_call_id,
+                        "content": m.content,
+                    }
+                )
+                pending_tool_call_id = None
         else:  # system | user
             wire.append({"role": m.role, "content": m.content})
     return wire
@@ -191,6 +197,8 @@ class OpenAICompatibleProvider:
             "POST", self._base_url + CHAT_ENDPOINT, json=payload, headers=self._headers()
         ) as resp:
             resp.raise_for_status()
+            content_parts: list[str] = []
+            calls: dict[int, dict[str, str]] = {}
             async for line in resp.aiter_lines():
                 if not line.startswith("data: "):
                     continue
@@ -206,7 +214,30 @@ class OpenAICompatibleProvider:
                     continue
                 delta = choices[0].get("delta") or {}
                 if delta.get("content"):
+                    content_parts.append(delta["content"])
                     yield delta["content"]
+                for call in delta.get("tool_calls") or []:
+                    index = int(call.get("index", 0))
+                    slot = calls.setdefault(index, {"name": "", "arguments": ""})
+                    function = call.get("function") or {}
+                    if function.get("name"):
+                        slot["name"] = function["name"]
+                    if function.get("arguments"):
+                        slot["arguments"] += function["arguments"]
+            # Native tool calls arrive as deltas; hand the graph the same decision
+            # JSON the non-streaming path produces. It replays only parsed answers,
+            # so this text never reaches the UI.
+            if calls and not content_parts:
+                first = calls[min(calls)]
+                try:
+                    args = json.loads(first["arguments"] or "{}")
+                except json.JSONDecodeError:
+                    args = {}
+                decision = ToolCallDecision(
+                    action="call_tool",
+                    tool=ToolCall(name=first["name"], args=args),
+                )
+                yield decision.model_dump_json()
 
     async def close(self) -> None:
         if self._owns_client:

@@ -8,13 +8,13 @@ implementation and one tenant.
 from __future__ import annotations
 
 import json
-import os
 from functools import lru_cache
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from flare_common.tenant import DEFAULT_TENANT
 from tools_gateway.builtin import create_default_registry
 from tools_gateway.registry import ToolRegistry, ToolResult
 
@@ -27,7 +27,7 @@ def _registry() -> ToolRegistry:
 
 
 def company_id(companyId: str | None = Query(default=None)) -> str:  # noqa: N803 - query alias
-    return companyId or os.environ.get("FLARE_COMPANY_ID", "acme")
+    return companyId or DEFAULT_TENANT
 
 
 def _data(result: ToolResult) -> Any:
