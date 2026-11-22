@@ -243,7 +243,7 @@ async def test_partial_then_full_payment_and_double_payment_guard(reg):
 
 async def test_ap_aging_buckets_and_vendor_totals(reg):
     vendor = await make_vendor(reg)
-    await make_bill(reg, vendor)  # due 2026-12-15
+    await make_bill(reg, vendor)  # no WHT: due 2026-12-15, total 1075.00
 
     current = body(await call(reg, "get_ap_aging", companyId=COMPANY, asOf="2026-12-01"))
     assert current["buckets"][0]["key"] == "current"
@@ -256,6 +256,32 @@ async def test_ap_aging_buckets_and_vendor_totals(reg):
     assert by_key["1-30"]["total"] == "1075.00"
     assert overdue["vendors"][0]["vendor"] == "Supply Co"
     assert overdue["vendors"][0]["1-30"] == "1075.00"
+
+
+async def test_ap_aging_excludes_withheld_tax(reg):
+    """WHT is never payable, so it must not appear as aged debt."""
+    vendor = await make_vendor(reg)
+    bill = body(await make_bill(reg, vendor, wht_rate=5))["bill"]
+    assert bill["total"] == "1075.00"
+    assert bill["netPayable"] == "1025.00"
+
+    aging = body(await call(reg, "get_ap_aging", companyId=COMPANY, asOf="2026-12-20"))
+    assert aging["totalOutstanding"] == "1025.00"
+    assert aging["bills"][0]["outstanding"] == "1025.00"
+    assert aging["vendors"][0]["totalOutstanding"] == "1025.00"
+
+    # Partial payment reduces the payable, not the billed total.
+    await call(
+        reg,
+        "record_bill_payment",
+        companyId=COMPANY,
+        billId=bill["id"],
+        amount="25.00",
+        bankAccountId=await account_id(reg, "1020"),
+        date="2026-12-01",
+    )
+    after = body(await call(reg, "get_ap_aging", companyId=COMPANY, asOf="2026-12-20"))
+    assert after["totalOutstanding"] == "1000.00"
 
 
 async def test_wht_summary_includes_pending_bills(reg):

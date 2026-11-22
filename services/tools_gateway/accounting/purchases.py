@@ -356,10 +356,13 @@ def _ap_aging(company: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
     for bill in store.list_bills(company["id"]):
         if bill["status"] == "PAID":
             continue
-        # Matches the core: aging is measured on the billed total, WHT aside.
+        # WHT is withheld at source: it was never payable, so aging must use
+        # netPayable, not the billed total (the core's total-based number
+        # reported phantom debt for every bill that carried WHT).
         total = Decimal(bill["total_amount"])
+        net_payable = Decimal(bill["net_payable"])
         paid = Decimal(bill["amount_paid"])
-        outstanding = total - paid
+        outstanding = net_payable - paid
         if outstanding <= 0:
             continue
 
