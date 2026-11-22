@@ -4,6 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { streamChat, type ChatMessage, type ToolCallEvent, type ToolResultEvent } from "./api";
 import { Composer } from "./Composer";
 import { Header } from "./Header";
+import { DashboardPage } from "./pages/Dashboard";
+import { PurchasesPage, SalesPage } from "./pages/Sales";
+import { TrialBalancePage } from "./pages/TrialBalance";
 import { ToolCard } from "./ToolCard";
 
 type Item = { kind: "text"; text: string } | { kind: "tool"; callId: string };
@@ -11,6 +14,16 @@ type Turn =
   | { id: string; role: "user"; text: string }
   | { id: string; role: "assistant"; items: Item[] };
 type ToolState = { call: ToolCallEvent; result?: ToolResultEvent };
+
+type View = "dashboard" | "ledger" | "sales" | "purchases" | "chat";
+
+const NAV: Array<{ key: View; label: string }> = [
+  { key: "dashboard", label: "Dashboard" },
+  { key: "ledger", label: "Ledger" },
+  { key: "sales", label: "Sales" },
+  { key: "purchases", label: "Purchases" },
+  { key: "chat", label: "Chat" },
+];
 
 const SUGGESTIONS = [
   "Create an invoice for Adeshina for 2 Ankara fabric",
@@ -26,6 +39,7 @@ export default function DshApp() {
   const [tools, setTools] = useState<Record<string, ToolState>>({});
   const [draft, setDraft] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [view, setView] = useState<View>("chat");
   const [sidebarOpen, setSidebarOpen] = useState(
     () => typeof window !== "undefined" && window.innerWidth >= 1024,
   );
@@ -134,6 +148,11 @@ export default function DshApp() {
     void send("Create an invoice for Adeshina for 2 Ankara fabric");
   }, [send]);
 
+  const selectView = (next: View) => {
+    setView(next);
+    if (window.innerWidth < 1024) setSidebarOpen(false);
+  };
+
   const newChat = () => {
     abortRef.current?.abort();
     setTurns([]);
@@ -143,6 +162,7 @@ export default function DshApp() {
     setTokens(0);
     setSteps(0);
     setTokensPerSecond(0);
+    setView("chat");
     if (window.innerWidth < 1024) setSidebarOpen(false);
   };
 
@@ -219,6 +239,24 @@ export default function DshApp() {
             <span className="text-[13px] leading-none">+</span> New chat
           </button>
 
+          <nav className="mt-2 flex flex-col gap-px">
+            {NAV.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => selectView(item.key)}
+                aria-current={view === item.key ? "page" : undefined}
+                className={`rounded-md px-1.5 py-1 text-left text-[12px] ${
+                  view === item.key
+                    ? "bg-neutral-200/80 font-medium text-neutral-900"
+                    : "text-neutral-600 hover:bg-neutral-200/50"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+
           <p className="mt-3 px-1.5 text-[9.5px] font-semibold uppercase tracking-[0.08em] text-neutral-400">
             Chats
           </p>
@@ -247,12 +285,14 @@ export default function DshApp() {
 
       <main className="flex min-w-0 flex-1 flex-col">
         <Header
-          title={sessionTitle}
+          title={view === "chat" ? sessionTitle : (NAV.find((item) => item.key === view)?.label ?? "")}
           onToggleSidebar={() => setSidebarOpen((open) => !open)}
           onCopyMarkdown={copyMarkdown}
           onDownloadLog={downloadLog}
         />
 
+        {view === "chat" ? (
+        <>
         <div ref={feedRef} className="flex-1 overflow-y-auto px-3 py-3 sm:px-5 sm:py-4 lg:px-6">
           <div className="mx-auto flex max-w-[760px] flex-col gap-3">
             {turns.length === 0 ? (
@@ -320,6 +360,30 @@ export default function DshApp() {
           cacheHit={0}
           contextUsed={Math.min(100, Math.round((tokens / 128000) * 100))}
         />
+        </>
+        ) : (
+          <div className="flex-1 overflow-y-auto px-3 py-3 pb-16 sm:px-5 sm:py-4 sm:pb-16 lg:px-6">
+            {view === "dashboard" ? (
+              <DashboardPage />
+            ) : view === "ledger" ? (
+              <TrialBalancePage />
+            ) : view === "sales" ? (
+              <SalesPage />
+            ) : (
+              <PurchasesPage />
+            )}
+          </div>
+        )}
+
+        {view !== "chat" ? (
+          <button
+            type="button"
+            onClick={() => selectView("chat")}
+            className="fixed bottom-4 right-4 z-20 rounded-full bg-neutral-900 px-3 py-2 text-[12px] font-medium text-white shadow-[0_8px_24px_rgba(16,16,20,0.25)]"
+          >
+            Chat
+          </button>
+        ) : null}
       </main>
     </div>
   );

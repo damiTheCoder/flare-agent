@@ -16,6 +16,7 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 
 from agent_runtime.approval import ApprovalManager, ApprovalPolicy, RedisApprovalBackend
 from agent_runtime.model_config import ModelConfigStore
+from agent_runtime.routes.accounting import router as accounting_router
 from agent_runtime.routes.approval import build_approval_router
 from agent_runtime.routes.capabilities import build_capabilities_router
 from agent_runtime.routes.kb import build_kb_router
@@ -266,6 +267,7 @@ def create_app(
 
     # M6: 运维 API（SLO 状态 / 错误预算）
     app.include_router(build_ops_router(settings))
+    app.include_router(accounting_router)
 
     @app.get("/health", tags=["system"])
     async def health() -> dict[str, str]:
