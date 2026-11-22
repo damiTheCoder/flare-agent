@@ -7,8 +7,15 @@ extra="forbid"：拼错的环境变量在启动即报错，绝不静默沿用默
 import os
 from functools import lru_cache
 
+from dotenv import load_dotenv
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+# One .env for local and container runs: it has to reach os.environ so
+# DATABASE_URL and provider-native keys (OPENAI_API_KEY, DEEPSEEK_API_KEY)
+# resolve the same way real environment variables do. Existing variables win.
+load_dotenv()
 
 
 class Settings(BaseSettings):

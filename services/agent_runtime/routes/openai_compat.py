@@ -206,7 +206,10 @@ async def _stream_result(manager: TaskManager, task_id: str, model: str) -> Asyn
         result = current.result or {}
         output = _task_output(result)
         if current.status != "completed":
-            output = f"[{current.status}] {output}".strip()
+            detail = (current.error or "").strip().splitlines()[0] if current.error else ""
+            if "401" in detail or "403" in detail:
+                detail = f"{detail} (check the model API key)"
+            output = f"[{current.status}] {detail or output}".strip()
         for word in output.split(" "):
             yield _sse_chunk(_chunk_object(task_id, model, word + " ", None))
 
