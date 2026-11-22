@@ -11,3 +11,12 @@ body {
   background: #ffffff;
   -webkit-font-smoothing: antialiased;
 }
+
+/* Scrolling stays, the chrome does not. */
+* {
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}

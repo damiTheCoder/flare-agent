@@ -61,7 +61,7 @@ export function Header({ title, onToggleSidebar, onCopyMarkdown, onDownloadLog }
   }, [menuOpen]);
 
   return (
-    <header className="relative flex h-11 shrink-0 items-center gap-1.5 border-b border-neutral-200 bg-white px-2 sm:gap-2 sm:px-3">
+    <header className="relative flex h-11 shrink-0 items-center gap-1.5 bg-white px-2 sm:gap-2 sm:px-3">
       <button
         type="button"
         aria-label="Toggle sidebar"
