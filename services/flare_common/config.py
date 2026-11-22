@@ -4,8 +4,10 @@
 extra="forbid"：拼错的环境变量在启动即报错，绝不静默沿用默认值（fail-fast）。
 """
 
+import os
 from functools import lru_cache
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -64,6 +66,35 @@ class Settings(BaseSettings):
     # TOFU（首用信任）：同作用域某工具获批一次后后续自动放行，防审批疲劳
     approval_tofu: bool = True
     approval_tofu_scope: str = "thread"  # thread（会话线程，默认）| tenant | off
+
+    @model_validator(mode="after")
+    def _resolve_model_credentials(self) -> "Settings":
+        """Accept provider-native keys so a real model needs no FLARE_* rename.
+
+        `DEEPSEEK_API_KEY` / `OPENAI_API_KEY` (and optional `*_BASE_URL`) fill the
+        gateway config; an explicit FLARE_MODEL_API_KEY/provider always wins.
+        """
+        if self.model_api_key:
+            return self
+        deepseek_key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
+        openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
+        if deepseek_key:
+            self.model_api_key = deepseek_key
+            if self.model_provider == "mock":
+                self.model_provider = "openai"
+            if "deepseek" not in self.model_base_url.lower():
+                self.model_base_url = os.environ.get(
+                    "DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"
+                )
+            if self.model_name == "gpt-4o-mini":
+                self.model_name = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
+        elif openai_key:
+            self.model_api_key = openai_key
+            if self.model_provider == "mock":
+                self.model_provider = "openai"
+            if self.model_base_url == "http://localhost:9001/v1":
+                self.model_base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
+        return self
 
 
 @lru_cache

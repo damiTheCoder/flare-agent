@@ -1,6 +1,8 @@
 /** SSE client for the Flare backend (OpenAI-compatible + tool events). */
 
-export const CHAT_ENDPOINT = "http://localhost:8000/v1/chat/completions";
+// Same-origin in production (FastAPI serves the built UI) and through the Vite
+// proxy in development, so no CORS configuration is involved either way.
+export const CHAT_ENDPOINT = "/v1/chat/completions";
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 

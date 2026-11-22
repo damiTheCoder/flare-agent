@@ -144,8 +144,8 @@ export function Composer({
             disabled={streaming || value.trim() === ""}
             className="ml-0.5 grid h-7 w-7 place-items-center rounded-full bg-blue-600 text-white disabled:bg-neutral-300"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M4 12h9M9 6l6 6-6 6" />
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M5 10v4M9 7v10M13 4v16M17 8v8M21 11v2" />
             </svg>
           </button>
         </div>

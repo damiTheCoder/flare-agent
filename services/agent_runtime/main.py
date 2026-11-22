@@ -10,6 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from agent_runtime.app import create_app
 from memory.memory import MemoryManager
@@ -26,6 +27,19 @@ app = create_app(
     memory=MemoryManager(str(_mem_path), vector_store=SqliteVectorStore(str(_mem_vec_path))),
 )
 
+
+class SpaStaticFiles(StaticFiles):
+    """Serve the SPA shell for unknown paths instead of a bare 404."""
+
+    async def get_response(self, path, scope):  # type: ignore[override]
+        try:
+            return await super().get_response(path, scope)
+        except StarletteHTTPException as exc:
+            if exc.status_code != 404:
+                raise
+            return await super().get_response("index.html", scope)
+
+
 _web_dist = Path(__file__).resolve().parents[1] / "web" / "dist"
 if _web_dist.is_dir():
-    app.mount("/", StaticFiles(directory=str(_web_dist), html=True), name="web")
+    app.mount("/", SpaStaticFiles(directory=str(_web_dist), html=True), name="web")
