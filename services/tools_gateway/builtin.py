@@ -3,11 +3,23 @@
 from __future__ import annotations
 
 from sandbox.sandbox_tools import build_sandbox_run_tool
-from tools_gateway.accounting.ledger import register_ledger_tools
+from tools_gateway.accounting.assets import register_asset_tools
+from tools_gateway.accounting.audit import register_audit_tools
 from tools_gateway.accounting.banking import register_banking_tools
+from tools_gateway.accounting.budgets import register_budget_tools
+from tools_gateway.accounting.documents import register_document_tools
+from tools_gateway.accounting.expenses import register_expense_tools
+from tools_gateway.accounting.finance import register_finance_tools
+from tools_gateway.accounting.integrations import register_integration_tools
 from tools_gateway.accounting.inventory import register_inventory_tools
+from tools_gateway.accounting.ledger import register_ledger_tools
+from tools_gateway.accounting.payroll import register_payroll_tools
+from tools_gateway.accounting.profile import register_profile_tools
+from tools_gateway.accounting.projects import register_project_tools
 from tools_gateway.accounting.purchases import register_purchases_tools
 from tools_gateway.accounting.sales import register_sales_tools
+from tools_gateway.accounting.tax import register_tax_tools
+from tools_gateway.accounting.usage import register_usage_tools
 from tools_gateway.registry import PERMISSION_READ, Tool, ToolRegistry, ToolResult
 
 
@@ -37,10 +49,22 @@ def create_default_registry(sandbox=None) -> ToolRegistry:
     )
     if sandbox is not None:
         registry.register(build_sandbox_run_tool(sandbox))
-    # MicroBalance accounting tools (Batch 1: ledger).
+    # MicroBalance accounting tools, one registrar per domain.
     register_ledger_tools(registry)
     register_sales_tools(registry)
     register_purchases_tools(registry)
     register_inventory_tools(registry)
     register_banking_tools(registry)
+    register_audit_tools(registry)
+    register_tax_tools(registry)
+    register_payroll_tools(registry)
+    register_expense_tools(registry)
+    register_asset_tools(registry)
+    register_budget_tools(registry)
+    register_finance_tools(registry)
+    register_project_tools(registry)
+    register_profile_tools(registry)
+    register_document_tools(registry)
+    register_integration_tools(registry)
+    register_usage_tools(registry)
     return registry

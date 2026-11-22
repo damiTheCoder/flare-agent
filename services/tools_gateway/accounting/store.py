@@ -8,7 +8,9 @@ the first time it is used (the old core did the same via its seed).
 
 from __future__ import annotations
 
+import json
 import os
+import re
 import sqlite3
 import threading
 import uuid
@@ -30,21 +32,29 @@ CHART_OF_ACCOUNTS: tuple[tuple[str, str, str, str], ...] = (
     ("1100", "Accounts Receivable", "ASSET", "Current Assets"),
     ("1110", "VAT Input", "ASSET", "Current Assets"),
     ("1200", "Inventory", "ASSET", "Current Assets"),
-    ("1500", "Equipment", "ASSET", "Fixed Assets"),
+    ("1500", "Fixed Assets", "ASSET", "Fixed Assets"),
     ("1510", "Accumulated Depreciation", "ASSET", "Fixed Assets"),
     ("2010", "Accounts Payable", "LIABILITY", "Current Liabilities"),
     ("2100", "VAT Payable", "LIABILITY", "Current Liabilities"),
     ("2110", "WHT Payable", "LIABILITY", "Current Liabilities"),
-    ("2200", "Loans Payable", "LIABILITY", "Long-term Liabilities"),
+    ("2200", "Long-term Loans", "LIABILITY", "Long-term Liabilities"),
+    ("2210", "PAYE Payable", "LIABILITY", "Current Liabilities"),
+    ("2220", "Pension Payable", "LIABILITY", "Current Liabilities"),
+    ("2230", "NHF Payable", "LIABILITY", "Current Liabilities"),
+    ("2240", "Net Salaries Payable", "LIABILITY", "Current Liabilities"),
+    ("2250", "Employee Reimbursement Payable", "LIABILITY", "Current Liabilities"),
     ("3000", "Share Capital", "EQUITY", "Equity"),
     ("3100", "Retained Earnings", "EQUITY", "Equity"),
     ("4000", "Sales Revenue", "REVENUE", "Operating Revenue"),
     ("4900", "Inventory Adjustment", "REVENUE", "Other Revenue"),
+    ("4910", "Gain on Asset Disposal", "REVENUE", "Other Revenue"),
     ("5000", "Cost of Goods Sold", "EXPENSE", "Cost of Sales"),
-    ("5100", "Salaries", "EXPENSE", "Operating Expenses"),
+    ("5100", "Salaries Expense", "EXPENSE", "Operating Expenses"),
     ("5200", "Rent", "EXPENSE", "Operating Expenses"),
-    ("5300", "Depreciation", "EXPENSE", "Operating Expenses"),
+    ("5300", "Depreciation Expense", "EXPENSE", "Operating Expenses"),
     ("5400", "Office Supplies Expense", "EXPENSE", "Operating Expenses"),
+    ("5500", "Interest Expense", "EXPENSE", "Operating Expenses"),
+    ("5600", "Loss on Asset Disposal", "EXPENSE", "Operating Expenses"),
 )
 
 _SCHEMA = """
@@ -184,6 +194,100 @@ CREATE TABLE IF NOT EXISTS bank_transactions (
     created_at         TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_bank_txn_company ON bank_transactions (company_id, status);
+CREATE TABLE IF NOT EXISTS employees (
+    id TEXT PRIMARY KEY, company_id TEXT NOT NULL, name TEXT NOT NULL, email TEXT,
+    basic_salary TEXT NOT NULL DEFAULT '0.00', housing_allowance TEXT NOT NULL DEFAULT '0.00',
+    transport_allowance TEXT NOT NULL DEFAULT '0.00', is_active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS payroll_runs (
+    id TEXT PRIMARY KEY, company_id TEXT NOT NULL, month TEXT NOT NULL, year INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'DRAFT', total_gross TEXT NOT NULL DEFAULT '0.00',
+    total_net TEXT NOT NULL DEFAULT '0.00', total_paye TEXT NOT NULL DEFAULT '0.00',
+    total_pension TEXT NOT NULL DEFAULT '0.00', total_nhf TEXT NOT NULL DEFAULT '0.00',
+    created_at TEXT NOT NULL, UNIQUE (company_id, month, year)
+);
+CREATE TABLE IF NOT EXISTS expense_categories (
+    id TEXT PRIMARY KEY, company_id TEXT NOT NULL, name TEXT NOT NULL, created_at TEXT NOT NULL,
+    UNIQUE (company_id, name)
+);
+CREATE TABLE IF NOT EXISTS expenses (
+    id TEXT PRIMARY KEY, company_id TEXT NOT NULL, date TEXT NOT NULL,
+    description TEXT NOT NULL, amount TEXT NOT NULL, category_id TEXT NOT NULL,
+    employee_id TEXT, payment_method TEXT NOT NULL, status TEXT NOT NULL,
+    journal_entry_id TEXT, created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS fixed_assets (
+    id TEXT PRIMARY KEY, company_id TEXT NOT NULL, name TEXT NOT NULL, category TEXT NOT NULL,
+    purchase_date TEXT NOT NULL, cost TEXT NOT NULL,
+    useful_life_years INTEGER NOT NULL, salvage_value TEXT NOT NULL DEFAULT '0.00',
+    accumulated_depreciation TEXT NOT NULL DEFAULT '0.00',
+    is_disposed INTEGER NOT NULL DEFAULT 0, disposal_date TEXT, created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS budgets (
+    id TEXT PRIMARY KEY, company_id TEXT NOT NULL, name TEXT NOT NULL,
+    fiscal_year INTEGER NOT NULL, start_date TEXT NOT NULL, end_date TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'ACTIVE', created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS budget_lines (
+    id TEXT PRIMARY KEY, company_id TEXT NOT NULL, budget_id TEXT NOT NULL,
+    account_id TEXT NOT NULL, amount TEXT NOT NULL DEFAULT '0.00',
+    period TEXT NOT NULL DEFAULT 'ANNUAL'
+);
+CREATE TABLE IF NOT EXISTS equity_transactions (
+    id TEXT PRIMARY KEY, company_id TEXT NOT NULL, type TEXT NOT NULL,
+    amount TEXT NOT NULL, date TEXT NOT NULL, description TEXT NOT NULL,
+    journal_entry_id TEXT, created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS loans (
+    id TEXT PRIMARY KEY, company_id TEXT NOT NULL, lender_name TEXT NOT NULL,
+    principal_amount TEXT NOT NULL, interest_rate TEXT NOT NULL, start_date TEXT NOT NULL,
+    term_months INTEGER NOT NULL, balance TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'ACTIVE',
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS loan_repayments (
+    id TEXT PRIMARY KEY, company_id TEXT NOT NULL, loan_id TEXT NOT NULL, date TEXT NOT NULL,
+    principal_paid TEXT NOT NULL, interest_paid TEXT NOT NULL, total_paid TEXT NOT NULL,
+    journal_entry_id TEXT, created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS projects (
+    id TEXT PRIMARY KEY, company_id TEXT NOT NULL, name TEXT NOT NULL, client_id TEXT,
+    budget TEXT NOT NULL DEFAULT '0.00', start_date TEXT NOT NULL, end_date TEXT,
+    status TEXT NOT NULL DEFAULT 'ACTIVE', created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS project_transactions (
+    id TEXT PRIMARY KEY, company_id TEXT NOT NULL, project_id TEXT NOT NULL, date TEXT NOT NULL,
+    description TEXT NOT NULL, amount TEXT NOT NULL, type TEXT NOT NULL, created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS business_profiles (
+    company_id TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '', address TEXT NOT NULL DEFAULT '',
+    phone TEXT NOT NULL DEFAULT '', email TEXT NOT NULL DEFAULT '', logo_url TEXT,
+    currency TEXT NOT NULL DEFAULT 'NGN', fiscal_year_start TEXT NOT NULL DEFAULT 'January',
+    vat_rate TEXT NOT NULL DEFAULT '7.50', wht_rate_company TEXT NOT NULL DEFAULT '10.00',
+    wht_rate_individual TEXT NOT NULL DEFAULT '5.00', updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS documents (
+    id TEXT PRIMARY KEY, company_id TEXT NOT NULL, filename TEXT NOT NULL,
+    original_name TEXT NOT NULL, mime_type TEXT NOT NULL, content TEXT NOT NULL,
+    uploaded_at TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'PENDING',
+    source TEXT NOT NULL DEFAULT 'UPLOAD', extracted_data TEXT
+);
+CREATE TABLE IF NOT EXISTS integrations (
+    company_id TEXT PRIMARY KEY, drive INTEGER NOT NULL DEFAULT 0,
+    gmail INTEGER NOT NULL DEFAULT 0, drive_refresh_token TEXT, drive_email TEXT,
+    drive_sync_schedule TEXT NOT NULL DEFAULT 'MANUAL', gmail_refresh_token TEXT,
+    gmail_email TEXT, updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS usage_counters (
+    company_id TEXT NOT NULL, month TEXT NOT NULL, input_tokens INTEGER NOT NULL DEFAULT 0,
+    output_tokens INTEGER NOT NULL DEFAULT 0, cached_tokens INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (company_id, month)
+);
+CREATE TABLE IF NOT EXISTS audit_log (
+    id TEXT PRIMARY KEY, company_id TEXT NOT NULL, user_id TEXT NOT NULL,
+    action TEXT NOT NULL, entity_type TEXT NOT NULL, entity_id TEXT NOT NULL,
+    before TEXT, after TEXT, created_at TEXT NOT NULL
+);
 """
 
 _connection: sqlite3.Connection | None = None
@@ -1011,3 +1115,170 @@ def mark_bank_reconciled(
     txn = get_bank_transaction(company_id, txn_id)
     assert txn is not None
     return txn
+
+
+# ---------------------------------------------------------------------------
+# generic row helpers (table/column names are validated identifiers)
+# ---------------------------------------------------------------------------
+
+_IDENT = re.compile(r"^[a-z][a-z0-9_]*$")
+_COLUMNS: dict[str, set[str]] = {}
+
+
+def _columns(table: str) -> set[str]:
+    if not _IDENT.match(table):
+        raise ValueError(f"invalid table name {table!r}")
+    if table not in _COLUMNS:
+        rows = connect().execute(f"PRAGMA table_info({table})").fetchall()
+        _COLUMNS[table] = {row["name"] for row in rows}
+    return _COLUMNS[table]
+
+
+def _check(table: str, names: list[str]) -> None:
+    known = _columns(table)
+    for name in names:
+        if not _IDENT.match(name) or name not in known:
+            raise ValueError(f"unknown column {table}.{name}")
+
+
+def insert_row(table: str, values: dict[str, Any]) -> dict[str, Any]:
+    row = dict(values)
+    known = _columns(table)
+    if "id" in known:
+        row.setdefault("id", new_id(table[:3]))
+    # Every *_at column in this schema is a timestamp with no DB default.
+    for column in known:
+        if column.endswith("_at"):
+            row.setdefault(column, now_iso())
+    _check(table, list(row))
+    connection = connect()
+    with connection:
+        connection.execute(
+            f"INSERT INTO {table} ({', '.join(row)}) VALUES ({', '.join('?' for _ in row)})",
+            tuple(row.values()),
+        )
+    # Return the persisted row so callers see DB defaults too.
+    if "id" in known:
+        stored = connection.execute(f"SELECT * FROM {table} WHERE id = ?", (row["id"],)).fetchone()
+    else:
+        stored = connection.execute(
+            f"SELECT * FROM {table} WHERE company_id = ?", (row["company_id"],)
+        ).fetchone()
+    return dict(stored) if stored is not None else row
+
+
+def select_rows(
+    table: str,
+    company_id: str,
+    where: dict[str, Any] | None = None,
+    order_by: str | None = None,
+) -> list[dict[str, Any]]:
+    sql = f"SELECT * FROM {table} WHERE company_id = ?"
+    params: list[Any] = [company_id]
+    for key, value in (where or {}).items():
+        _check(table, [key])
+        sql += f" AND {key} = ?"
+        params.append(value)
+    if order_by:
+        for token in re.split(r"[\s,]+", order_by):
+            if token and token.upper() not in ("ASC", "DESC"):
+                _check(table, [token])
+        sql += f" ORDER BY {order_by}"
+    return [dict(row) for row in connect().execute(sql, params).fetchall()]
+
+
+def select_one(table: str, company_id: str, where: dict[str, Any]) -> dict[str, Any] | None:
+    rows = select_rows(table, company_id, where)
+    return rows[0] if rows else None
+
+
+def update_row(table: str, company_id: str, row_id: str, values: dict[str, Any]) -> dict[str, Any]:
+    _check(table, list(values))
+    if "updated_at" in _columns(table):
+        values = {**values, "updated_at": now_iso()}
+    assignments = ", ".join(f"{key} = ?" for key in values)
+    key = "id" if "id" in _columns(table) else "company_id"
+    connection = connect()
+    with connection:
+        connection.execute(
+            f"UPDATE {table} SET {assignments} WHERE company_id = ? AND {key} = ?",
+            (*values.values(), company_id, row_id),
+        )
+    row = (
+        connect()
+        .execute(
+            f"SELECT * FROM {table} WHERE company_id = ? AND {key} = ?",
+            (company_id, row_id),
+        )
+        .fetchone()
+    )
+    return dict(row) if row is not None else {}
+
+
+def delete_row(table: str, company_id: str, row_id: str) -> bool:
+    connection = connect()
+    with connection:
+        cursor = connection.execute(
+            f"DELETE FROM {table} WHERE company_id = ? AND id = ?", (company_id, row_id)
+        )
+    return cursor.rowcount > 0
+
+
+def delete_rows(table: str, company_id: str, where: dict[str, Any]) -> int:
+    sql = f"DELETE FROM {table} WHERE company_id = ?"
+    params: list[Any] = [company_id]
+    for key, value in where.items():
+        _check(table, [key])
+        sql += f" AND {key} = ?"
+        params.append(value)
+    connection = connect()
+    with connection:
+        cursor = connection.execute(sql, params)
+    return cursor.rowcount
+
+
+# ---------------------------------------------------------------------------
+# audit + usage
+# ---------------------------------------------------------------------------
+
+
+def record_audit(
+    company_id: str,
+    *,
+    action: str,
+    entity_type: str,
+    entity_id: str,
+    user_id: str = "agent",
+    detail: dict[str, Any] | None = None,
+) -> None:
+    insert_row(
+        "audit_log",
+        {
+            "company_id": company_id,
+            "user_id": user_id,
+            "action": action,
+            "entity_type": entity_type,
+            "entity_id": entity_id,
+            "after": json.dumps(detail or {}, default=str),
+        },
+    )
+
+
+def usage_for(company_id: str, month: str) -> dict[str, Any]:
+    row = (
+        connect()
+        .execute(
+            "SELECT * FROM usage_counters WHERE company_id = ? AND month = ?",
+            (company_id, month),
+        )
+        .fetchone()
+    )
+    if row is not None:
+        return dict(row)
+    return {
+        "company_id": company_id,
+        "month": month,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cached_tokens": 0,
+    }

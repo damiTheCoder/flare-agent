@@ -231,6 +231,13 @@ def propose_entry(
         memo=memo_text,
         lines=[(account_id, fmt(debit), fmt(credit)) for account_id, debit, credit in normalized],
     )
+    store.record_audit(
+        company["id"],
+        action="PROPOSE_JOURNAL",
+        entity_type="JournalEntry",
+        entity_id=entry["id"],
+        detail={"memo": entry["memo"], "date": entry["date"]},
+    )
     return _entry_payload(entry)
 
 
@@ -286,6 +293,12 @@ def post_entry(company: dict[str, Any], journal_id: str) -> dict[str, Any]:
 
     posted = store.get_entry(company["id"], journal_id)
     assert posted is not None
+    store.record_audit(
+        company["id"],
+        action="APPROVE_JOURNAL",
+        entity_type="JournalEntry",
+        entity_id=journal_id,
+    )
     payload = _entry_payload(posted)
     payload["posted"] = True
     return payload
@@ -681,8 +694,8 @@ def ledger_tools() -> list[Tool]:
                 "type": "object",
                 "properties": {
                     "companyId": _COMPANY,
-                    "month": {"type": "integer", "minimum": 1, "maximum": 12},
-                    "year": {"type": "integer", "minimum": 2000, "maximum": 2100},
+                    "month": {"type": "integer"},
+                    "year": {"type": "integer"},
                 },
                 "required": ["month", "year"],
                 "additionalProperties": False,
@@ -700,8 +713,8 @@ def ledger_tools() -> list[Tool]:
                 "type": "object",
                 "properties": {
                     "companyId": _COMPANY,
-                    "month": {"type": "integer", "minimum": 1, "maximum": 12},
-                    "year": {"type": "integer", "minimum": 2000, "maximum": 2100},
+                    "month": {"type": "integer"},
+                    "year": {"type": "integer"},
                 },
                 "required": ["month", "year"],
                 "additionalProperties": False,
