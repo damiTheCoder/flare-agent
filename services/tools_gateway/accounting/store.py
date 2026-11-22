@@ -13,6 +13,7 @@ import sqlite3
 import threading
 import uuid
 from datetime import UTC, datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +28,7 @@ CHART_OF_ACCOUNTS: tuple[tuple[str, str, str, str], ...] = (
     ("1010", "Cash", "ASSET", "Current Assets"),
     ("1020", "Bank", "ASSET", "Current Assets"),
     ("1100", "Accounts Receivable", "ASSET", "Current Assets"),
+    ("1110", "VAT Input", "ASSET", "Current Assets"),
     ("1200", "Inventory", "ASSET", "Current Assets"),
     ("1500", "Equipment", "ASSET", "Fixed Assets"),
     ("1510", "Accumulated Depreciation", "ASSET", "Fixed Assets"),
@@ -41,6 +43,7 @@ CHART_OF_ACCOUNTS: tuple[tuple[str, str, str, str], ...] = (
     ("5100", "Salaries", "EXPENSE", "Operating Expenses"),
     ("5200", "Rent", "EXPENSE", "Operating Expenses"),
     ("5300", "Depreciation", "EXPENSE", "Operating Expenses"),
+    ("5400", "Office Supplies Expense", "EXPENSE", "Operating Expenses"),
 )
 
 _SCHEMA = """
@@ -129,6 +132,44 @@ CREATE TABLE IF NOT EXISTS invoice_lines (
     total       TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_invoice_lines_invoice ON invoice_lines (invoice_id);
+CREATE TABLE IF NOT EXISTS vendors (
+    id         TEXT PRIMARY KEY,
+    company_id TEXT NOT NULL,
+    name       TEXT NOT NULL,
+    email      TEXT,
+    phone      TEXT,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_vendors_company ON vendors (company_id, name);
+CREATE TABLE IF NOT EXISTS purchase_bills (
+    id            TEXT PRIMARY KEY,
+    company_id    TEXT NOT NULL,
+    vendor_id     TEXT NOT NULL,
+    bill_number   TEXT NOT NULL,
+    date          TEXT NOT NULL,
+    due_date      TEXT NOT NULL,
+    status        TEXT NOT NULL DEFAULT 'RECEIVED',
+    total_amount  TEXT NOT NULL DEFAULT '0.00',
+    vat_rate      TEXT NOT NULL DEFAULT '7.50',
+    vat_amount    TEXT NOT NULL DEFAULT '0.00',
+    amount_paid   TEXT NOT NULL DEFAULT '0.00',
+    wht_rate      TEXT NOT NULL DEFAULT '0.00',
+    wht_amount    TEXT NOT NULL DEFAULT '0.00',
+    net_payable   TEXT NOT NULL DEFAULT '0.00',
+    created_at    TEXT NOT NULL,
+    UNIQUE (company_id, bill_number)
+);
+CREATE INDEX IF NOT EXISTS idx_bills_company ON purchase_bills (company_id, date);
+CREATE TABLE IF NOT EXISTS bill_lines (
+    id          TEXT PRIMARY KEY,
+    company_id  TEXT NOT NULL,
+    bill_id     TEXT NOT NULL,
+    description TEXT NOT NULL,
+    quantity    TEXT NOT NULL,
+    unit_cost   TEXT NOT NULL,
+    total       TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_bill_lines_bill ON bill_lines (bill_id);
 """
 
 _connection: sqlite3.Connection | None = None
@@ -384,8 +425,6 @@ def adjust_balance(company_id: str, account_id: str, delta: str) -> None:
     ).fetchone()
     if row is None:
         return
-    from decimal import Decimal
-
     updated = (Decimal(row["balance"]) + Decimal(delta)).quantize(Decimal("0.01"))
     with connection:
         connection.execute(
@@ -658,3 +697,193 @@ def update_invoice_payment(
     invoice = get_invoice(company_id, invoice_id)
     assert invoice is not None
     return invoice
+
+
+# ---------------------------------------------------------------------------
+# vendors
+# ---------------------------------------------------------------------------
+
+
+def insert_vendor(
+    company_id: str, *, name: str, email: str | None, phone: str | None
+) -> dict[str, Any]:
+    vendor_id = new_id("ven")
+    connection = connect()
+    with connection:
+        connection.execute(
+            "INSERT INTO vendors (id, company_id, name, email, phone, created_at)"
+            " VALUES (?, ?, ?, ?, ?, ?)",
+            (vendor_id, company_id, name, email, phone, now_iso()),
+        )
+    row = connection.execute("SELECT * FROM vendors WHERE id = ?", (vendor_id,)).fetchone()
+    return dict(row)
+
+
+def list_vendors(company_id: str) -> list[dict[str, Any]]:
+    rows = (
+        connect()
+        .execute("SELECT * FROM vendors WHERE company_id = ? ORDER BY name", (company_id,))
+        .fetchall()
+    )
+    return [dict(row) for row in rows]
+
+
+def get_vendor(company_id: str, vendor_id: str) -> dict[str, Any] | None:
+    row = (
+        connect()
+        .execute("SELECT * FROM vendors WHERE company_id = ? AND id = ?", (company_id, vendor_id))
+        .fetchone()
+    )
+    return dict(row) if row is not None else None
+
+
+# ---------------------------------------------------------------------------
+# purchase bills
+# ---------------------------------------------------------------------------
+
+
+def next_bill_number(company_id: str) -> str:
+    row = (
+        connect()
+        .execute("SELECT COUNT(*) AS total FROM purchase_bills WHERE company_id = ?", (company_id,))
+        .fetchone()
+    )
+    return f"BILL-{int(row['total']) + 1:04d}"
+
+
+def insert_bill(
+    company_id: str,
+    *,
+    number: str,
+    vendor_id: str,
+    date: str,
+    due_date: str,
+    status: str,
+    total: str,
+    vat_rate: str,
+    vat_amount: str,
+    wht_rate: str,
+    wht_amount: str,
+    net_payable: str,
+    lines: list[tuple[str, str, str, str]],
+) -> dict[str, Any]:
+    """Create a bill and its lines atomically."""
+    bill_id = new_id("bil")
+    connection = connect()
+    with connection:
+        connection.execute(
+            "INSERT INTO purchase_bills"
+            " (id, company_id, vendor_id, bill_number, date, due_date, status,"
+            "  total_amount, vat_rate, vat_amount, amount_paid, wht_rate, wht_amount,"
+            "  net_payable, created_at)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '0.00', ?, ?, ?, ?)",
+            (
+                bill_id,
+                company_id,
+                vendor_id,
+                number,
+                date,
+                due_date,
+                status,
+                total,
+                vat_rate,
+                vat_amount,
+                wht_rate,
+                wht_amount,
+                net_payable,
+                now_iso(),
+            ),
+        )
+        for description, quantity, unit_cost, line_total in lines:
+            connection.execute(
+                "INSERT INTO bill_lines"
+                " (id, company_id, bill_id, description, quantity, unit_cost, total)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (
+                    new_id("bll"),
+                    company_id,
+                    bill_id,
+                    description,
+                    quantity,
+                    unit_cost,
+                    line_total,
+                ),
+            )
+    bill = get_bill(company_id, bill_id)
+    assert bill is not None
+    return bill
+
+
+def get_bill(company_id: str, bill_id: str) -> dict[str, Any] | None:
+    connection = connect()
+    row = connection.execute(
+        "SELECT * FROM purchase_bills WHERE company_id = ? AND id = ?",
+        (company_id, bill_id),
+    ).fetchone()
+    if row is None:
+        return None
+    bill = dict(row)
+    lines = connection.execute(
+        "SELECT * FROM bill_lines WHERE company_id = ? AND bill_id = ? ORDER BY id",
+        (company_id, bill_id),
+    ).fetchall()
+    bill["lines"] = [dict(line) for line in lines]
+    vendor = connection.execute(
+        "SELECT name FROM vendors WHERE company_id = ? AND id = ?",
+        (company_id, bill["vendor_id"]),
+    ).fetchone()
+    bill["vendor"] = vendor["name"] if vendor is not None else None
+    return bill
+
+
+def list_bills(company_id: str) -> list[dict[str, Any]]:
+    rows = (
+        connect()
+        .execute(
+            "SELECT id FROM purchase_bills WHERE company_id = ?"
+            " ORDER BY date DESC, created_at DESC",
+            (company_id,),
+        )
+        .fetchall()
+    )
+    bills = []
+    for row in rows:
+        bill = get_bill(company_id, row["id"])
+        if bill is not None:
+            bills.append(bill)
+    return bills
+
+
+def update_bill_payment(
+    company_id: str, bill_id: str, *, amount_paid: str, status: str
+) -> dict[str, Any]:
+    connection = connect()
+    with connection:
+        connection.execute(
+            "UPDATE purchase_bills SET amount_paid = ?, status = ?"
+            " WHERE company_id = ? AND id = ?",
+            (amount_paid, status, company_id, bill_id),
+        )
+    bill = get_bill(company_id, bill_id)
+    assert bill is not None
+    return bill
+
+
+def account_movement(company_id: str, account_name: str) -> tuple[Decimal, Decimal]:
+    """Debit and credit totals for a named account across ALL journal statuses."""
+    rows = (
+        connect()
+        .execute(
+            "SELECT l.debit, l.credit FROM journal_lines l"
+            " JOIN accounts a ON a.id = l.account_id"
+            " WHERE l.company_id = ? AND a.name = ?",
+            (company_id, account_name),
+        )
+        .fetchall()
+    )
+    debit = Decimal("0.00")
+    credit = Decimal("0.00")
+    for row in rows:
+        debit += Decimal(row["debit"])
+        credit += Decimal(row["credit"])
+    return debit.quantize(Decimal("0.01")), credit.quantize(Decimal("0.01"))

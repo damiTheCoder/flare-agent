@@ -49,3 +49,18 @@ def add(*values: Decimal) -> Decimal:
         for value in values:
             total += value
         return total.quantize(CENT)
+
+
+def to_quantity(value: object, field: str = "quantity") -> Decimal:
+    """Parse a non-negative quantity; quantities keep full precision."""
+    if value is None or value == "":
+        raise AccountingError(VALIDATION, f"{field} is required")
+    try:
+        parsed = Decimal(str(value).strip())
+    except (InvalidOperation, ValueError):
+        raise AccountingError(VALIDATION, f"{field} must be a decimal number") from None
+    if not parsed.is_finite():
+        raise AccountingError(VALIDATION, f"{field} must be a finite number")
+    if parsed < 0:
+        raise AccountingError(VALIDATION, f"{field} must not be negative")
+    return parsed

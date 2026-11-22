@@ -8,7 +8,7 @@ Invoices and payments only ever raise PENDING journals through
 from __future__ import annotations
 
 from datetime import UTC, date, datetime, timedelta
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from typing import Any
 
 from tools_gateway.accounting import store
@@ -23,7 +23,7 @@ from tools_gateway.accounting.ledger import (
     _run as run_tool,
 )
 from tools_gateway.accounting.ledger import propose_entry
-from tools_gateway.accounting.money import ZERO, add, assert_non_negative, fmt, to_money
+from tools_gateway.accounting.money import ZERO, add, fmt, to_money, to_quantity
 from tools_gateway.registry import (
     PERMISSION_READ,
     PERMISSION_WRITE,
@@ -44,19 +44,6 @@ AGING_BUCKETS = (
 # ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------
-
-
-def _to_quantity(value: object, field: str) -> Decimal:
-    if value is None or value == "":
-        raise AccountingError(VALIDATION, f"{field} is required")
-    try:
-        parsed = Decimal(str(value).strip())
-    except (InvalidOperation, ValueError):
-        raise AccountingError(VALIDATION, f"{field} must be a decimal number") from None
-    if not parsed.is_finite():
-        raise AccountingError(VALIDATION, f"{field} must be a finite number")
-    assert_non_negative(parsed, field)
-    return parsed
 
 
 def _require_account(company: dict[str, Any], name: str, account_type: str) -> dict[str, Any]:
@@ -195,7 +182,7 @@ def _create_invoice(company: dict[str, Any], args: dict[str, Any]) -> dict[str, 
         label = f"Line {index}"
         if not isinstance(raw, dict):
             raise AccountingError(VALIDATION, f"{label}: must be an object")
-        quantity = _to_quantity(raw.get("quantity"), f"{label} quantity")
+        quantity = to_quantity(raw.get("quantity"), f"{label} quantity")
 
         item_id = raw.get("itemId")
         item = None
