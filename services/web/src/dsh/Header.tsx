@@ -71,9 +71,12 @@ export function Header({ title, onToggleSidebar, onCopyMarkdown, onDownloadLog }
         <PanelLeft size={iconSize.lg} strokeWidth={iconStroke} aria-hidden="true" />
       </button>
 
-      <span className="grid h-[18px] w-[18px] place-items-center rounded-[5px] bg-blue-600 text-[10px] font-bold text-white lg:hidden">
-        M
-      </span>
+      <img
+        src="/logo.png"
+        alt=""
+        aria-hidden="true"
+        className="h-[18px] w-7 rounded-[5px] object-cover lg:hidden"
+      />
       <span className="hidden text-[13px] font-semibold tracking-tight text-neutral-900 sm:inline lg:hidden">
         MicroBalance
       </span>

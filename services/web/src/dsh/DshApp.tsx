@@ -1,7 +1,7 @@
 /** DSH-style shell: dense sidebar + chat feed + floating composer. */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Plus, X } from "lucide-react";
+import { X } from "lucide-react";
 import { streamChat, type ChatMessage, type ToolCallEvent, type ToolResultEvent } from "./api";
 import { apiGet } from "./rest";
 import { Composer } from "./Composer";
@@ -76,7 +76,6 @@ const NAV_GROUPS: Array<{ label: string | null; items: NavItem[] }> = [
       { key: "balance-sheet", label: "Balance Sheet" },
     ],
   },
-  { label: null, items: [{ key: "chat", label: "Chat" }] },
 ];
 
 const NAV_ITEMS: NavItem[] = NAV_GROUPS.flatMap((group) => group.items);
@@ -322,6 +321,58 @@ export default function DshApp() {
     activeNavRef.current?.scrollIntoView({ block: "nearest" });
   }, [view, sidebarOpen]);
 
+  const renderNavItem = (item: NavItem) => {
+    const Icon = navIcons[item.key];
+    const active = view === item.key;
+    return (
+      <button
+        key={item.key}
+        ref={active ? activeNavRef : undefined}
+        type="button"
+        onClick={() => selectView(item.key)}
+        aria-current={active ? "page" : undefined}
+        aria-label={sidebarOpen ? undefined : item.label}
+        title={sidebarOpen ? undefined : item.label}
+        className={
+          sidebarOpen
+            ? `group flex h-11 w-full items-center gap-2 rounded-md pl-2.5 pr-1.5 text-left text-[13px] transition-colors focus-visible:outline-none lg:h-9 focus-visible:ring-2 focus-visible:ring-neutral-900/15 ${
+                active
+                  ? "bg-neutral-200/80 font-medium text-neutral-900"
+                  : "text-neutral-600 hover:bg-neutral-200/50 hover:text-neutral-900"
+              }`
+            : `grid h-10 w-10 place-items-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15 ${
+                active
+                  ? "bg-neutral-200/80 text-neutral-900"
+                  : "text-neutral-400 hover:bg-neutral-200/50 hover:text-neutral-600"
+              }`
+        }
+      >
+        <span
+          className={
+            sidebarOpen ? "flex w-5 shrink-0 justify-center" : "flex justify-center"
+          }
+        >
+          <Icon
+            size={iconSize.lg}
+            strokeWidth={iconStroke}
+            aria-hidden="true"
+            className={
+              active
+                ? "text-neutral-700"
+                : "text-neutral-400 group-hover:text-neutral-600"
+            }
+          />
+        </span>
+        {sidebarOpen ? <span className="truncate">{item.label}</span> : null}
+        {sidebarOpen && item.key === "approvals" && pendingCount > 0 ? (
+          <span className="ml-auto inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-md bg-amber-100 px-1 text-[10.5px] font-semibold tabular-nums text-amber-700">
+            {pendingCount}
+          </span>
+        ) : null}
+      </button>
+    );
+  };
+
   const firstUser = turns.find((turn) => turn.role === "user");
   const sessionTitle =
     firstUser !== undefined ? `${firstUser.text.slice(0, 34)}${firstUser.text.length > 34 ? "…" : ""}` : "New session";
@@ -345,9 +396,12 @@ export default function DshApp() {
       >
         {sidebarOpen ? (
           <div className="flex h-12 shrink-0 items-center gap-2 px-3">
-            <span className="grid h-6 w-6 place-items-center rounded-md bg-blue-600 text-[11px] font-bold text-white">
-              M
-            </span>
+            <img
+              src="/logo.png"
+              alt=""
+              aria-hidden="true"
+              className="h-6 w-9 rounded-md object-cover"
+            />
             <span className="text-[14px] font-semibold tracking-tight text-neutral-900">MicroBalance</span>
             <button
               type="button"
@@ -360,9 +414,12 @@ export default function DshApp() {
           </div>
         ) : (
           <div className="flex h-12 shrink-0 items-center justify-center">
-            <span className="grid h-6 w-6 place-items-center rounded-md bg-blue-600 text-[11px] font-bold text-white">
-              M
-            </span>
+            <img
+              src="/logo.png"
+              alt=""
+              aria-hidden="true"
+              className="h-6 w-9 rounded-md object-cover"
+            />
           </div>
         )}
 
@@ -371,10 +428,15 @@ export default function DshApp() {
             <button
               type="button"
               onClick={newChat}
-              className="flex h-10 w-full items-center gap-2 rounded-md border border-neutral-200 bg-white px-2.5 text-left text-[13px] font-medium text-neutral-700 shadow-sm transition-colors hover:bg-neutral-50 lg:h-9 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
+              className="flex h-10 w-full items-center gap-2 rounded-md px-2.5 text-left text-[13px] font-medium text-neutral-700 transition-colors hover:bg-neutral-100 lg:h-9 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
             >
               <span className="flex w-5 shrink-0 justify-center">
-                <Plus size={iconSize.md} strokeWidth={iconStroke} aria-hidden="true" />
+                <img
+                  src="/grokbot.jpeg"
+                  alt=""
+                  aria-hidden="true"
+                  className="h-[22px] w-[22px] rounded-full object-cover"
+                />
               </span>
               New chat
             </button>
@@ -384,12 +446,25 @@ export default function DshApp() {
               onClick={newChat}
               aria-label="New chat"
               title="New chat"
-              className="mx-auto grid h-10 w-10 place-items-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-200/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
+              className="mx-auto grid h-10 w-10 place-items-center rounded-md transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
             >
-              <Plus size={iconSize.lg} strokeWidth={iconStroke} aria-hidden="true" />
+              <img
+                src="/grokbot.jpeg"
+                alt=""
+                aria-hidden="true"
+                className="h-7 w-7 rounded-full object-cover"
+              />
             </button>
           )}
         </div>
+
+        <nav
+          className={
+            sidebarOpen ? "mb-1 flex flex-col px-3" : "mb-1 flex flex-col items-center gap-0.5"
+          }
+        >
+          {renderNavItem({ key: "chat", label: "Chat" })}
+        </nav>
 
         <div className="relative flex min-h-0 flex-1 flex-col">
           <div
@@ -420,57 +495,7 @@ export default function DshApp() {
                     sidebarOpen ? "flex flex-col" : "flex flex-col items-center gap-0.5"
                   }
                 >
-                  {group.items.map((item) => {
-                    const Icon = navIcons[item.key];
-                    const active = view === item.key;
-                    return (
-                      <button
-                        key={item.key}
-                        ref={active ? activeNavRef : undefined}
-                        type="button"
-                        onClick={() => selectView(item.key)}
-                        aria-current={active ? "page" : undefined}
-                        aria-label={sidebarOpen ? undefined : item.label}
-                        title={sidebarOpen ? undefined : item.label}
-                        className={
-                          sidebarOpen
-                            ? `group flex h-11 w-full items-center gap-2 rounded-md pl-2.5 pr-1.5 text-left text-[13px] transition-colors focus-visible:outline-none lg:h-9 focus-visible:ring-2 focus-visible:ring-neutral-900/15 ${
-                                active
-                                  ? "bg-neutral-200/80 font-medium text-neutral-900"
-                                  : "text-neutral-600 hover:bg-neutral-200/50 hover:text-neutral-900"
-                              }`
-                            : `grid h-10 w-10 place-items-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15 ${
-                                active
-                                  ? "bg-neutral-200/80 text-neutral-900"
-                                  : "text-neutral-400 hover:bg-neutral-200/50 hover:text-neutral-600"
-                              }`
-                        }
-                      >
-                        <span
-                          className={
-                            sidebarOpen ? "flex w-5 shrink-0 justify-center" : "flex justify-center"
-                          }
-                        >
-                          <Icon
-                            size={iconSize.lg}
-                            strokeWidth={iconStroke}
-                            aria-hidden="true"
-                            className={
-                              active
-                                ? "text-neutral-700"
-                                : "text-neutral-400 group-hover:text-neutral-600"
-                            }
-                          />
-                        </span>
-                        {sidebarOpen ? <span className="truncate">{item.label}</span> : null}
-                        {sidebarOpen && item.key === "approvals" && pendingCount > 0 ? (
-                          <span className="ml-auto inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-md bg-amber-100 px-1 text-[10.5px] font-semibold tabular-nums text-amber-700">
-                            {pendingCount}
-                          </span>
-                        ) : null}
-                      </button>
-                    );
-                  })}
+                  {group.items.map((item) => renderNavItem(item))}
                 </nav>
               </div>
             ))}
