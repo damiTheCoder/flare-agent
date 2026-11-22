@@ -44,6 +44,7 @@ export async function streamChat(
   messages: ChatMessage[],
   handlers: StreamHandlers,
   signal?: AbortSignal,
+  model: string = "flare-agent",
 ): Promise<void> {
   let response: Response;
   try {
@@ -51,7 +52,7 @@ export async function streamChat(
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        model: "flare-agent",
+        model,
         stream: true,
         messages: messages.map((message) => ({ role: message.role, content: message.content })),
       }),

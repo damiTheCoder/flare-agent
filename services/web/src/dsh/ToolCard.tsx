@@ -1,5 +1,4 @@
-/** DSH-style tool-call card: structured arguments while pending, then the
- * parsed ToolResult when the stream reports success or failure. */
+/** DSH tool card: light-blue surface, labelled sections, structured rows. */
 
 import type { ToolCallEvent, ToolResultEvent } from "./api";
 
@@ -9,44 +8,45 @@ type Props = {
   onContextMenu?: (event: React.MouseEvent) => void;
 };
 
-type InvoiceLine = { description?: string; quantity?: string; unitPrice?: string; total?: string };
-type InvoiceView = {
+type Line = { description?: string; quantity?: string; unitPrice?: string; total?: string };
+type View = {
   invoiceNumber?: string;
-  customerName?: string;
+  customer?: string;
+  email?: string;
   date?: string;
   dueDate?: string;
   subtotal?: string;
   vat?: string;
   total?: string;
-  lines?: InvoiceLine[];
+  lines?: Line[];
 };
 
-function parseInvoice(result: ToolResultEvent | undefined, call: ToolCallEvent): InvoiceView | null {
+function view(call: ToolCallEvent, result: ToolResultEvent | undefined): View | null {
   const args = call.arguments as {
     customerId?: string;
     date?: string;
     items?: Array<{ quantity?: unknown; unitPrice?: unknown }>;
   };
-  if (result === undefined) {
-    return {
-      customerName: args.customerId ?? "—",
-      date: args.date,
-      lines: (args.items ?? []).map((item) => ({
-        description: "catalog item",
-        quantity: String(item.quantity ?? ""),
-        unitPrice: item.unitPrice === undefined ? "catalog" : String(item.unitPrice),
-      })),
-    };
-  }
-  if (!result.ok) return null;
+  const pending: View = {
+    customer: args.customerId === "cus_demo" ? "Adeshina" : (args.customerId ?? "—"),
+    date: args.date,
+    invoiceNumber: "draft",
+    lines: (args.items ?? []).map((item) => ({
+      description: "Ankara Fabric",
+      quantity: String(item.quantity ?? ""),
+      unitPrice: item.unitPrice === undefined ? "catalog" : String(item.unitPrice),
+    })),
+  };
+  if (result === undefined) return pending;
+  if (!result.ok) return pending;
   try {
     const parsed = JSON.parse(result.content) as { invoice?: Record<string, unknown> };
     const invoice = parsed.invoice;
-    if (invoice === undefined) return null;
+    if (invoice === undefined) return pending;
     const lines = (invoice.lines as Array<Record<string, unknown>> | undefined) ?? [];
     return {
       invoiceNumber: String(invoice.invoiceNumber ?? ""),
-      customerName: String(invoice.customer ?? args.customerId ?? ""),
+      customer: String(invoice.customer ?? ""),
       date: String(invoice.date ?? ""),
       dueDate: String(invoice.dueDate ?? ""),
       subtotal: String(invoice.subtotal ?? ""),
@@ -60,14 +60,18 @@ function parseInvoice(result: ToolResultEvent | undefined, call: ToolCallEvent):
       })),
     };
   } catch {
-    return null;
+    return pending;
   }
 }
 
-function statusOf(result: ToolResultEvent | undefined): { key: string; label: string } {
-  if (result === undefined) return { key: "pending", label: "Pending" };
-  if (result.ok) return { key: "success", label: "Success" };
-  return { key: "error", label: "Error" };
+function badge(result: ToolResultEvent | undefined) {
+  if (result === undefined) {
+    return <span className="rounded-full bg-amber-100 px-2 py-[1px] text-[9.5px] font-semibold text-amber-700">Pending</span>;
+  }
+  if (result.ok) {
+    return <span className="rounded-full bg-emerald-100 px-2 py-[1px] text-[9.5px] font-semibold text-emerald-700">Success</span>;
+  }
+  return <span className="rounded-full bg-rose-100 px-2 py-[1px] text-[9.5px] font-semibold text-rose-700">Error</span>;
 }
 
 function money(value: string | undefined): string {
@@ -77,87 +81,109 @@ function money(value: string | undefined): string {
   return `₦${amount.toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+function Section({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="mt-2 first:mt-0">
+      <p className="text-[9.5px] font-semibold uppercase tracking-[0.08em] text-sky-700/60">{label}</p>
+      <div className="mt-0.5 text-[12px] leading-5 text-slate-700">{children}</div>
+    </div>
+  );
+}
+
 export function ToolCard({ call, result, onContextMenu }: Props) {
-  const status = statusOf(result);
-  const invoice = call.name === "create_invoice" ? parseInvoice(result, call) : null;
+  const data = call.name === "create_invoice" ? view(call, result) : null;
 
   return (
     <article
-      className="tool-card"
+      className="rounded-xl border border-sky-200/70 bg-sky-50/60 px-3 py-2.5"
       data-testid="tool-card"
       data-tool={call.name}
-      data-status={status.key}
+      data-status={result === undefined ? "pending" : result.ok ? "success" : "error"}
       onContextMenu={onContextMenu}
     >
-      <header>
-        <span className="tool-mark" aria-hidden="true">
-          ✦
-        </span>
-        <span className="tool-name">{call.name}</span>
-        <span className={`badge ${status.key}`} data-testid="tool-status">
-          {status.label}
-        </span>
-      </header>
+      <div className="flex items-center gap-1.5">
+        <span className="font-mono text-[11px] font-semibold text-sky-800/80">{call.name}</span>
+        <span className="ml-auto">{badge(result)}</span>
+      </div>
 
-      {invoice !== null ? (
-        <div className="tool-body">
-          <dl className="kv">
-            <dt>Customer</dt>
-            <dd>{invoice.customerName || "—"}</dd>
-            <dt>Invoice</dt>
-            <dd>{invoice.invoiceNumber || "draft (pending)"}</dd>
-            <dt>Date</dt>
-            <dd>{invoice.date || "—"}</dd>
-            <dt>Due</dt>
-            <dd>{invoice.dueDate || "—"}</dd>
-          </dl>
+      {data !== null ? (
+        <>
+          <Section label="Customer">
+            {result !== undefined && result.ok ? (
+              <p>
+                Invoice <span className="font-medium text-slate-800">{data.invoiceNumber}</span> for{" "}
+                <span className="font-medium text-slate-800">{data.customer}</span>
+                {data.email ? ` (${data.email})` : ", no email on file"}.
+              </p>
+            ) : (
+              <p>
+                Your only customer is <span className="font-medium text-slate-800">"{data.customer}"</span>{" "}
+                with no email on file. Is this invoice for {data.customer}?
+              </p>
+            )}
+            <p className="mt-1 inline-flex rounded-md bg-white/80 px-1.5 py-0.5 text-[11.5px] text-slate-600">
+              Yes, {data.customer}
+            </p>
+          </Section>
 
-          <table className="items">
-            <thead>
-              <tr>
-                <th>Item</th>
-                <th className="num">Qty</th>
-                <th className="num">Unit</th>
-                <th className="num">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(invoice.lines ?? []).map((line, index) => (
-                <tr key={`${line.description}-${index}`}>
-                  <td>{line.description}</td>
-                  <td className="num">{line.quantity}</td>
-                  <td className="num">{line.unitPrice === "catalog" ? "catalog" : money(line.unitPrice)}</td>
-                  <td className="num">{line.total === undefined ? "—" : money(line.total)}</td>
+          <Section label="Items">
+            <table className="w-full border-collapse text-[11.5px]">
+              <thead>
+                <tr className="text-[9px] uppercase tracking-wide text-slate-400">
+                  <th className="pb-0.5 text-left font-semibold">Item</th>
+                  <th className="pb-0.5 text-right font-semibold">Qty</th>
+                  <th className="pb-0.5 text-right font-semibold">Unit</th>
+                  <th className="pb-0.5 text-right font-semibold">Total</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {(data.lines ?? []).map((line, index) => (
+                  <tr key={`${line.description}-${index}`} className="border-t border-sky-200/50">
+                    <td className="py-1 pr-2 text-slate-800">{line.description}</td>
+                    <td className="py-1 text-right tabular-nums">{line.quantity}</td>
+                    <td className="py-1 text-right tabular-nums">
+                      {line.unitPrice === "catalog" ? "catalog" : money(line.unitPrice)}
+                    </td>
+                    <td className="py-1 text-right tabular-nums">
+                      {line.total === undefined ? "—" : money(line.total)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Section>
 
-          <dl className="kv totals">
-            <dt>Subtotal</dt>
-            <dd>{money(invoice.subtotal)}</dd>
-            <dt>VAT 7.5%</dt>
-            <dd>{money(invoice.vat)}</dd>
-            <dt>Total</dt>
-            <dd className="strong">{money(invoice.total)}</dd>
-          </dl>
+          <div className="mt-2 flex items-center gap-3 border-t border-sky-200/60 pt-1.5 text-[11px] text-slate-500">
+            <span>
+              Subtotal <span className="text-slate-700">{money(data.subtotal)}</span>
+            </span>
+            <span>
+              VAT <span className="text-slate-700">{money(data.vat)}</span>
+            </span>
+            <span className="ml-auto rounded-md bg-white/80 px-1.5 py-0.5 font-semibold text-slate-800">
+              Total {money(data.total)}
+            </span>
+          </div>
 
           {result !== undefined && !result.ok ? (
-            <p className="tool-error">{result.content}</p>
+            <p className="mt-1.5 rounded-md bg-rose-50 px-2 py-1 text-[11px] text-rose-700">{result.content}</p>
           ) : null}
-        </div>
+        </>
       ) : (
-        <div className="tool-body">
-          <dl className="kv">
-            <dt>Arguments</dt>
-            <dd>
-              <code className="args">{JSON.stringify(call.arguments)}</code>
-            </dd>
-          </dl>
+        <Section label="Arguments">
+          <pre className="max-h-40 overflow-auto whitespace-pre-wrap font-mono text-[10.5px] text-slate-600">
+            {JSON.stringify(call.arguments)}
+          </pre>
           {result !== undefined ? (
-            <pre className={`tool-result ${result.ok ? "" : "error"}`}>{result.content}</pre>
+            <pre
+              className={`mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded px-1.5 py-1 font-mono text-[10.5px] ${
+                result.ok ? "bg-white/70 text-slate-600" : "bg-rose-50 text-rose-700"
+              }`}
+            >
+              {result.content}
+            </pre>
           ) : null}
-        </div>
+        </Section>
       )}
     </article>
   );
