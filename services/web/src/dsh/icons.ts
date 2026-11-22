@@ -57,4 +57,9 @@ export const navIcons = {
   chat: MessageCircle,
 } satisfies Record<string, LucideIcon>;
 
+/** Destinations with a brand mark instead of an outline icon. */
+export const navImages: Partial<Record<View, string>> = {
+  chat: "/grokbot.jpeg",
+};
+
 export type View = keyof typeof navIcons;

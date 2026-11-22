@@ -1,7 +1,7 @@
 /** DSH-style shell: dense sidebar + chat feed + floating composer. */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { streamChat, type ChatMessage, type ToolCallEvent, type ToolResultEvent } from "./api";
 import { apiGet } from "./rest";
 import { Composer } from "./Composer";
@@ -16,7 +16,7 @@ import { EmployeesPage, PayrollHistoryPage, TaxSummaryPage } from "./pages/Payro
 import { BalanceSheetPage, ProfitLossPage } from "./pages/Reports";
 import { PurchasesPage, SalesPage } from "./pages/Sales";
 import { TrialBalancePage } from "./pages/TrialBalance";
-import { iconSize, iconStroke, navIcons, type View } from "./icons";
+import { iconSize, iconStroke, navIcons, navImages, type View } from "./icons";
 import { ToolCard } from "./ToolCard";
 
 type Item = { kind: "text"; text: string } | { kind: "tool"; callId: string };
@@ -323,6 +323,7 @@ export default function DshApp() {
 
   const renderNavItem = (item: NavItem) => {
     const Icon = navIcons[item.key];
+    const mark = navImages[item.key];
     const active = view === item.key;
     return (
       <button
@@ -352,16 +353,25 @@ export default function DshApp() {
             sidebarOpen ? "flex w-5 shrink-0 justify-center" : "flex justify-center"
           }
         >
-          <Icon
-            size={iconSize.lg}
-            strokeWidth={iconStroke}
-            aria-hidden="true"
-            className={
-              active
-                ? "text-neutral-700"
-                : "text-neutral-400 group-hover:text-neutral-600"
-            }
-          />
+          {mark !== undefined ? (
+            <img
+              src={mark}
+              alt=""
+              aria-hidden="true"
+              className="h-[18px] w-[18px] rounded-full object-cover"
+            />
+          ) : (
+            <Icon
+              size={iconSize.lg}
+              strokeWidth={iconStroke}
+              aria-hidden="true"
+              className={
+                active
+                  ? "text-neutral-700"
+                  : "text-neutral-400 group-hover:text-neutral-600"
+              }
+            />
+          )}
         </span>
         {sidebarOpen ? <span className="truncate">{item.label}</span> : null}
         {sidebarOpen && item.key === "approvals" && pendingCount > 0 ? (
@@ -428,15 +438,10 @@ export default function DshApp() {
             <button
               type="button"
               onClick={newChat}
-              className="flex h-10 w-full items-center gap-2 rounded-md px-2.5 text-left text-[13px] font-medium text-neutral-700 transition-colors hover:bg-neutral-100 lg:h-9 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
+              className="flex h-10 w-full items-center gap-2 rounded-md bg-neutral-100 px-2.5 text-left text-[13px] font-medium text-neutral-800 transition-colors hover:bg-neutral-200/70 lg:h-9 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
             >
               <span className="flex w-5 shrink-0 justify-center">
-                <img
-                  src="/grokbot.jpeg"
-                  alt=""
-                  aria-hidden="true"
-                  className="h-[22px] w-[22px] rounded-full object-cover"
-                />
+                <Plus size={iconSize.md} strokeWidth={iconStroke} aria-hidden="true" />
               </span>
               New chat
             </button>
@@ -446,14 +451,9 @@ export default function DshApp() {
               onClick={newChat}
               aria-label="New chat"
               title="New chat"
-              className="mx-auto grid h-10 w-10 place-items-center rounded-md transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
+              className="mx-auto grid h-10 w-10 place-items-center rounded-md bg-neutral-100 transition-colors hover:bg-neutral-200/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
             >
-              <img
-                src="/grokbot.jpeg"
-                alt=""
-                aria-hidden="true"
-                className="h-7 w-7 rounded-full object-cover"
-              />
+              <Plus size={iconSize.lg} strokeWidth={iconStroke} aria-hidden="true" />
             </button>
           )}
         </div>
