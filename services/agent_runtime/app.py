@@ -27,6 +27,12 @@ from agent_runtime.routes.openai_compat import build_openai_router
 from agent_runtime.routes.ops import build_ops_router
 from agent_runtime.routes.tasks import build_tasks_router
 from agent_runtime.routes.workspaces import build_workspaces_router
+from agent_runtime.security import (
+    BasicAuthMiddleware,
+    RateLimitMiddleware,
+    RequestSizeLimitMiddleware,
+    SecurityHeadersMiddleware,
+)
 from agent_runtime.task_store import (
     InMemoryTaskStore,
     RedisTaskStore,
@@ -126,6 +132,7 @@ def create_app(
     knowledge_base 使用内存 SQLite + HashEmbedder，memory 使用内存事实库 + 向量库（开发默认）。
     """
     settings = settings or get_settings()
+    production = settings.env in {"prod", "production"}
     setup_logging(settings.log_level)
     # M5：OTel 埋点（无端点 no-op；有端点且缺 SDK/导出失败 -> fail-fast）
     init_tracing(settings.app_name, settings.otel_endpoint or None)
@@ -208,7 +215,17 @@ def create_app(
         if mem is not None:
             await mem.close()
 
-    app = FastAPI(title=settings.app_name, version=__version__, lifespan=lifespan)
+    docs_enabled = settings.docs_enabled
+    if docs_enabled is None:
+        docs_enabled = not production
+    app = FastAPI(
+        title=settings.app_name,
+        version=__version__,
+        lifespan=lifespan,
+        docs_url="/docs" if docs_enabled else None,
+        redoc_url="/redoc" if docs_enabled else None,
+        openapi_url="/openapi.json" if docs_enabled else None,
+    )
     app.add_middleware(TenantMiddleware)  # M5：X-Tenant-Id -> contextvar
     app.add_middleware(
         CORSMiddleware,
@@ -216,6 +233,27 @@ def create_app(
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    # Added last = outermost: limits and headers cover every response,
+    # including the 413/429s produced by the middleware below them.
+    if settings.ui_auth_username and settings.ui_auth_password:
+        app.add_middleware(
+            BasicAuthMiddleware,
+            username=settings.ui_auth_username,
+            password=settings.ui_auth_password,
+        )
+    rate_limit_enabled = settings.rate_limit_enabled
+    if rate_limit_enabled is None:
+        rate_limit_enabled = production
+    if rate_limit_enabled:
+        app.add_middleware(
+            RateLimitMiddleware,
+            per_minute=settings.rate_limit_per_minute,
+            chat_per_minute=settings.rate_limit_chat_per_minute,
+            trust_proxy=settings.rate_limit_trust_proxy,
+        )
+    app.add_middleware(RequestSizeLimitMiddleware, max_bytes=settings.max_request_bytes)
+    if settings.security_headers:
+        app.add_middleware(SecurityHeadersMiddleware)
     app.add_exception_handler(FlareError, _flare_error_handler)
     app.add_exception_handler(Exception, _unhandled_error_handler)
 

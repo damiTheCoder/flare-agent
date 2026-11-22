@@ -39,7 +39,7 @@ class SpaStaticFiles(StaticFiles):
             if exc.status_code != 404:
                 raise
             request_path = scope.get("path", "")
-            if request_path.startswith(("/api/", "/v1/", "/mcp")):
+            if request_path.startswith(("/api/", "/v1/", "/mcp", "/docs", "/redoc", "/openapi.json")):
                 raise
             return await super().get_response("index.html", scope)
 

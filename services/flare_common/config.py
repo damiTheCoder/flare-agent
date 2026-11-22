@@ -8,20 +8,27 @@ import os
 from functools import lru_cache
 
 from dotenv import load_dotenv
-from pydantic import model_validator
+from pydantic import AliasChoices, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
 
 # One .env for local and container runs: it has to reach os.environ so
 # DATABASE_URL and provider-native keys (OPENAI_API_KEY, DEEPSEEK_API_KEY)
 # resolve the same way real environment variables do. Existing variables win.
-load_dotenv()
+# Tests set FLARE_SKIP_DOTENV so a developer's .env cannot leak into the suite.
+_SKIP_DOTENV = os.environ.get("FLARE_SKIP_DOTENV", "").strip().lower() in {"1", "true", "yes"}
+if not _SKIP_DOTENV:
+    load_dotenv()
 
 
 class Settings(BaseSettings):
     """应用配置。env_file=.env 仅在本地开发加载；生产全部走环境变量。"""
 
-    model_config = SettingsConfigDict(env_prefix="FLARE_", env_file=".env", extra="forbid")
+    model_config = SettingsConfigDict(
+        env_prefix="FLARE_",
+        env_file=None if _SKIP_DOTENV else ".env",
+        extra="forbid",
+        populate_by_name=True,
+    )
 
     app_name: str = "flare-agent"
     env: str = "dev"
@@ -30,7 +37,11 @@ class Settings(BaseSettings):
     # CORS：dev 默认放开；生产用 JSON 数组，如 FLARE_CORS_ORIGINS='["https://app.example.com"]'
     cors_origins: list[str] = ["*"]
 
-    database_url: str = "postgresql://flare:flare@localhost:5432/flare"
+    # DATABASE_URL (no prefix) is the deployment standard; both names work.
+    database_url: str = Field(
+        default="postgresql://flare:flare@localhost:5432/flare",
+        validation_alias=AliasChoices("DATABASE_URL", "FLARE_DATABASE_URL"),
+    )
     redis_url: str = "redis://localhost:6379/0"
 
     object_store_endpoint: str = "http://localhost:9000"
@@ -45,6 +56,24 @@ class Settings(BaseSettings):
     model_name: str = "gpt-4o-mini"
     # 模型设置页（控制台「模型」）本地持久化位置；真实环境变量优先于该文件
     model_config_path: str = "data/model_config.json"
+
+    # 供应商原生变量：既接受无前缀名（OPENAI_API_KEY / DEEPSEEK_*），
+    # 也接受 FLARE_ 前缀；声明成字段后 .env 里的这些行不会被 extra=forbid 拒绝。
+    openai_api_key: str = Field(
+        default="", validation_alias=AliasChoices("OPENAI_API_KEY", "FLARE_OPENAI_API_KEY")
+    )
+    openai_base_url: str = Field(
+        default="", validation_alias=AliasChoices("OPENAI_BASE_URL", "FLARE_OPENAI_BASE_URL")
+    )
+    deepseek_api_key: str = Field(
+        default="", validation_alias=AliasChoices("DEEPSEEK_API_KEY", "FLARE_DEEPSEEK_API_KEY")
+    )
+    deepseek_base_url: str = Field(
+        default="", validation_alias=AliasChoices("DEEPSEEK_BASE_URL", "FLARE_DEEPSEEK_BASE_URL")
+    )
+    deepseek_model: str = Field(
+        default="", validation_alias=AliasChoices("DEEPSEEK_MODEL", "FLARE_DEEPSEEK_MODEL")
+    )
 
     # M5：任务存储（memory|sqlite|redis）；OTel 导出端点（空=不启用）
     # DSH 对齐：本地默认 sqlite 落盘（data/tasks.sqlite3）——会话列表重启可查；
@@ -65,6 +94,18 @@ class Settings(BaseSettings):
     # F9.3：OpenAI 兼容 API 认证（FLARE_API_KEY；空=不校验，生产务必配置）
     api_key: str = ""
 
+    # 安全加固：响应头 / 请求体上限 / 限流 / 文档暴露（None=按环境取默认）
+    security_headers: bool = True
+    max_request_bytes: int = 25 * 1024 * 1024
+    rate_limit_enabled: bool | None = None
+    rate_limit_per_minute: int = 120
+    rate_limit_chat_per_minute: int = 20
+    rate_limit_trust_proxy: bool = False
+    docs_enabled: bool | None = None
+    # 可选：整站 HTTP Basic 认证（生产请置于 TLS 之后；空=不启用）
+    ui_auth_username: str = ""
+    ui_auth_password: str = ""
+
     # F1.3/F2.4：审批策略（等于或高于该级别的工具需人工审批；默认 destructive 起）
     # 例如 FLARE_APPROVAL_REQUIRE_LEVEL=write 则所有写/破坏性工具都要审批
     approval_require_level: str = "destructive"
@@ -84,24 +125,28 @@ class Settings(BaseSettings):
         """
         if self.model_api_key:
             return self
-        deepseek_key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
-        openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
+        deepseek_key = self.deepseek_api_key.strip()
+        openai_key = self.openai_api_key.strip()
         if deepseek_key:
             self.model_api_key = deepseek_key
             if self.model_provider == "mock":
                 self.model_provider = "openai"
-            if "deepseek" not in self.model_base_url.lower():
-                self.model_base_url = os.environ.get(
-                    "DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"
-                )
-            if self.model_name == "gpt-4o-mini":
-                self.model_name = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
+            if self.deepseek_base_url.strip():
+                self.model_base_url = self.deepseek_base_url.strip()
+            elif "deepseek" not in self.model_base_url.lower():
+                self.model_base_url = "https://api.deepseek.com/v1"
+            if self.deepseek_model.strip():
+                self.model_name = self.deepseek_model.strip()
+            elif self.model_name == "gpt-4o-mini":
+                self.model_name = "deepseek-chat"
         elif openai_key:
             self.model_api_key = openai_key
             if self.model_provider == "mock":
                 self.model_provider = "openai"
-            if self.model_base_url == "http://localhost:9001/v1":
-                self.model_base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
+            if self.openai_base_url.strip():
+                self.model_base_url = self.openai_base_url.strip()
+            elif self.model_base_url == "http://localhost:9001/v1":
+                self.model_base_url = "https://api.openai.com/v1"
         return self
 
 

@@ -10,6 +10,13 @@ import os
 
 import pytest
 
+# Must run before any test module imports flare_common.config: the suite must
+# never inherit a developer's .env (production env, database URL, real keys).
+os.environ["FLARE_SKIP_DOTENV"] = "1"
+os.environ["FLARE_ENV"] = "test"
+os.environ["FLARE_TASK_STORE"] = "memory"
+os.environ["FLARE_RATE_LIMIT_ENABLED"] = "false"
+
 
 @pytest.fixture(autouse=True)
 def _isolate_task_store() -> None:

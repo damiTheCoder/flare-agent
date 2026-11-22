@@ -141,7 +141,7 @@ export default function DshApp() {
   const [sidebarOpen, setSidebarOpen] = useState(
     () => typeof window !== "undefined" && window.innerWidth >= 1024,
   );
-  const [model, setModel] = useState("DeepSeek V4 Flash");
+  const [model, setModel] = useState("deepseek-chat");
   const [tokens, setTokens] = useState(0);
   const [steps, setSteps] = useState(0);
   const [tokensPerSecond, setTokensPerSecond] = useState(0);

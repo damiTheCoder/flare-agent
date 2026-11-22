@@ -19,7 +19,7 @@ type Props = {
   contextUsed: number;
 };
 
-const MODELS = ["DeepSeek V4 Flash", "DeepSeek V4", "flare-agent"];
+const MODELS = ["deepseek-chat", "deepseek-reasoner"];
 const INTEGRATIONS = ["Google Drive", "Gmail", "Google Calendar"];
 const MAX_INPUT_HEIGHT = 200;
 

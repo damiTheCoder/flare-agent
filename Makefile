@@ -18,7 +18,7 @@ install: ## 环境已存在：仅安装/更新依赖
 	$(PY) -m pip install -e .
 
 dev: ## 启动 Agent Runtime（热重载，端口 8000）
-	PYTHONPATH=services $(PY) -m uvicorn agent_runtime.main:app --reload --port 8000
+	PYTHONPATH=services $(PY) -m uvicorn agent_runtime.main:app --reload --port 8000 --no-server-header
 
 test: ## 运行单元测试
 	PYTHONPATH=services $(PY) -m pytest tests -q

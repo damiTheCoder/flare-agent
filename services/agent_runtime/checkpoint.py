@@ -1,6 +1,6 @@
 """Checkpoint 存储（长任务可恢复的底座）。
 
-- 生产：PostgreSQL AsyncPostgresSaver（M5 上云，见 ADR-0001）
+- 生产：PostgreSQL AsyncPostgresSaver（psycopg 异步连接；M5 上云，见 ADR-0001）
 - 本地 dev：SQLite 降级（data/flare_agent.sqlite3，已 gitignore）
 - 非 dev 且未接 Postgres：fail-fast 显式报错（F4），绝不静默回退内存假装"可恢复"
 - 进程级单例缓存：checkpointer 生命周期与进程一致（首次 get_settings 钉死环境选择，属预期）
@@ -64,18 +64,21 @@ class CheckpointUnavailableError(FlareError):
 async def _create_pg_saver(dsn: str):
     """创建长生命周期 AsyncPostgresSaver（守卫式）：缺依赖/连不上 -> CheckpointUnavailableError。
 
-    注意：from_conn_string 是 async 上下文管理器（退出即断连），
-    进程级单例需自建 asyncpg 长连接传给构造函数。
+    注意：from_conn_string 是 async 上下文管理器（退出即断连），所以这里自建
+    长生命周期 psycopg 异步连接。连接参数与 from_conn_string 保持一致。
     """
     try:
-        import asyncpg
+        import psycopg
         from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+        from psycopg.rows import dict_row
     except ImportError as exc:  # noqa: PERF203 - 仅生产路径触发
         raise CheckpointUnavailableError(
-            f"生产环境需安装 asyncpg 与 langgraph-checkpoint-postgres：{exc}"
+            f"生产环境需安装 psycopg 与 langgraph-checkpoint-postgres：{exc}"
         ) from exc
     try:
-        conn = await asyncpg.connect(dsn)
+        conn = await psycopg.AsyncConnection.connect(
+            dsn, autocommit=True, prepare_threshold=0, row_factory=dict_row
+        )
         saver = AsyncPostgresSaver(conn=conn)
         await saver.setup()
     except Exception as exc:  # noqa: BLE001 - 连接失败统一转可用性错误

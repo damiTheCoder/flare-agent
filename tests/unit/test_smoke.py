@@ -13,7 +13,9 @@ from flare_common.config import Settings
 from flare_common.errors import NotFoundError
 
 
-def test_settings_defaults() -> None:
+def test_settings_defaults(monkeypatch) -> None:
+    # The suite pins FLARE_ENV=test globally; unset it to check the real default.
+    monkeypatch.delenv("FLARE_ENV", raising=False)
     s = Settings(_env_file=None)
     assert s.app_name == "flare-agent"
     assert s.env == "dev"
