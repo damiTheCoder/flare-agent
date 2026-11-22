@@ -96,12 +96,14 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         *,
         per_minute: int,
         chat_per_minute: int,
+        tts_per_minute: int = 30,
         trust_proxy: bool = False,
     ) -> None:
         super().__init__(app)
         self._limiter = SlidingWindowLimiter()
         self._per_minute = max(per_minute, 1)
         self._chat_per_minute = max(chat_per_minute, 1)
+        self._tts_per_minute = max(tts_per_minute, 1)
         self._trust_proxy = trust_proxy
 
     async def dispatch(self, request: Request, call_next):
@@ -114,8 +116,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         chat = path == "/v1/chat/completions"
-        bucket = "chat" if chat else "api"
-        limit = self._chat_per_minute if chat else self._per_minute
+        speech = path == "/api/tts"
+        if chat:
+            bucket, limit = "chat", self._chat_per_minute
+        elif speech:
+            bucket, limit = "tts", self._tts_per_minute
+        else:
+            bucket, limit = "api", self._per_minute
         allowed, retry_after, remaining = self._limiter.hit(
             bucket, client_ip(request, self._trust_proxy), limit
         )

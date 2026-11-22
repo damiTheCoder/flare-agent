@@ -1,7 +1,7 @@
 /** DSH composer: a filled grey card — message on top, controls underneath. */
 
 import { useLayoutEffect, useRef, useState } from "react";
-import { ArrowUp, Check, ChevronDown, Mic, Plug, Plus } from "lucide-react";
+import { ArrowUp, Check, ChevronDown, Mic, Plug, Plus, Volume2, VolumeX } from "lucide-react";
 import { iconSize, iconStroke } from "./icons";
 
 type Props = {
@@ -11,6 +11,8 @@ type Props = {
   streaming: boolean;
   model: string;
   onModel: (model: string) => void;
+  speechEnabled: boolean;
+  onToggleSpeech: () => void;
   turns: number;
   steps: number;
   tokens: number;
@@ -33,6 +35,8 @@ export function Composer({
   streaming,
   model,
   onModel,
+  speechEnabled,
+  onToggleSpeech,
   turns,
   steps,
   tokens,
@@ -144,6 +148,23 @@ export function Composer({
                 </div>
               ) : null}
             </div>
+
+            <button
+              type="button"
+              aria-pressed={speechEnabled}
+              aria-label={speechEnabled ? "Turn off read aloud" : "Read replies aloud"}
+              title={speechEnabled ? "Read aloud: on" : "Read aloud: off"}
+              onClick={onToggleSpeech}
+              className={`grid h-9 w-9 shrink-0 place-items-center rounded-full transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15 ${
+                speechEnabled ? "bg-white text-neutral-900" : "text-neutral-500"
+              }`}
+            >
+              {speechEnabled ? (
+                <Volume2 size={iconSize.lg} strokeWidth={iconStroke} aria-hidden="true" />
+              ) : (
+                <VolumeX size={iconSize.lg} strokeWidth={iconStroke} aria-hidden="true" />
+              )}
+            </button>
 
             <button type="button" aria-label="Voice input" className={control}>
               <Mic size={iconSize.lg} strokeWidth={iconStroke} aria-hidden="true" />

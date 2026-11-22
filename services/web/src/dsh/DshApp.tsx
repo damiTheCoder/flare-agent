@@ -1,9 +1,10 @@
 /** DSH-style shell: dense sidebar + chat feed + floating composer. */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, Square, Volume2, X } from "lucide-react";
 import { streamChat, type ChatMessage, type ToolCallEvent, type ToolResultEvent } from "./api";
 import { apiGet } from "./rest";
+import { speechText, synthesize } from "./speech";
 import { Composer } from "./Composer";
 import { Header } from "./Header";
 import { ChartOfAccountsPage } from "./pages/Accounts";
@@ -142,6 +143,76 @@ export default function DshApp() {
     () => typeof window !== "undefined" && window.innerWidth >= 1024,
   );
   const [model, setModel] = useState("deepseek-chat");
+  const [speechEnabled, setSpeechEnabled] = useState(
+    () => window.localStorage.getItem("mb.speech") === "on",
+  );
+  const [speakingTurn, setSpeakingTurn] = useState<string | null>(null);
+  const [speechNotice, setSpeechNotice] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const speechAbortRef = useRef<AbortController | null>(null);
+  const speechUrlRef = useRef<string | null>(null);
+
+  const stopSpeech = useCallback(() => {
+    speechAbortRef.current?.abort();
+    speechAbortRef.current = null;
+    if (audioRef.current !== null) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    if (speechUrlRef.current !== null) {
+      URL.revokeObjectURL(speechUrlRef.current);
+      speechUrlRef.current = null;
+    }
+    setSpeakingTurn(null);
+  }, []);
+
+  const playSpeech = useCallback(
+    async (turnId: string, text: string) => {
+      const clean = speechText(text);
+      if (clean === "") return;
+      stopSpeech();
+      setSpeechNotice(null);
+      setSpeakingTurn(turnId);
+      const controller = new AbortController();
+      speechAbortRef.current = controller;
+      try {
+        const blob = await synthesize(clean, controller.signal);
+        if (controller.signal.aborted) return;
+        const url = URL.createObjectURL(blob);
+        speechUrlRef.current = url;
+        const audio = new Audio(url);
+        audioRef.current = audio;
+        audio.addEventListener("ended", () => {
+          if (speechUrlRef.current === url) {
+            URL.revokeObjectURL(url);
+            speechUrlRef.current = null;
+          }
+          setSpeakingTurn((current) => (current === turnId ? null : current));
+        });
+        audio.addEventListener("error", () => {
+          setSpeechNotice("Could not play this audio.");
+          setSpeakingTurn((current) => (current === turnId ? null : current));
+        });
+        await audio.play();
+      } catch (cause) {
+        if (controller.signal.aborted) return;
+        setSpeechNotice(cause instanceof Error ? cause.message : "Voice playback failed.");
+        setSpeakingTurn((current) => (current === turnId ? null : current));
+      } finally {
+        if (speechAbortRef.current === controller) speechAbortRef.current = null;
+      }
+    },
+    [stopSpeech],
+  );
+
+  const toggleSpeech = useCallback(() => {
+    setSpeechEnabled((enabled) => !enabled);
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("mb.speech", speechEnabled ? "on" : "off");
+    if (!speechEnabled) stopSpeech();
+  }, [speechEnabled, stopSpeech]);
   const [tokens, setTokens] = useState(0);
   const [steps, setSteps] = useState(0);
   const [tokensPerSecond, setTokensPerSecond] = useState(0);
@@ -165,6 +236,7 @@ export default function DshApp() {
     async (text: string) => {
       const trimmed = text.trim();
       if (trimmed === "" || streaming) return;
+      stopSpeech();
 
       const userTurn: Turn = { id: nextId("user"), role: "user", text: trimmed };
       const assistantId = nextId("assistant");
@@ -192,11 +264,13 @@ export default function DshApp() {
       stats.current = { started: performance.now(), tokens: 0 };
       const controller = new AbortController();
       abortRef.current = controller;
+      let answerText = "";
 
       await streamChat(
         history,
         {
           onContent: (delta) => {
+            answerText += delta;
             stats.current.tokens += Math.max(1, Math.round(delta.length / 4));
             setTokens(stats.current.tokens);
             patchAssistant(assistantId, (items) => {
@@ -224,6 +298,9 @@ export default function DshApp() {
               setTokensPerSecond(Math.round(stats.current.tokens / seconds));
             }
             setStreaming(false);
+            if (speechEnabled && answerText.trim() !== "") {
+              void playSpeech(assistantId, answerText);
+            }
           },
           onError: (message) => {
             patchAssistant(assistantId, (items) => [...items, { kind: "text", text: `⚠︎ ${message}` }]);
@@ -235,7 +312,7 @@ export default function DshApp() {
       );
       setStreaming(false);
     },
-    [patchAssistant, streaming, turns, model],
+    [patchAssistant, playSpeech, speechEnabled, stopSpeech, streaming, turns, model],
   );
 
   const selectView = (next: View) => {
@@ -589,6 +666,38 @@ export default function DshApp() {
                       </p>
                     ),
                   )}
+                  {!streaming &&
+                  turn.items.some((item) => item.kind === "text" && item.text.trim() !== "") ? (
+                    <button
+                      type="button"
+                      aria-label={
+                        speakingTurn === turn.id ? "Stop reading this reply" : "Read this reply aloud"
+                      }
+                      title={speakingTurn === turn.id ? "Stop reading" : "Read aloud"}
+                      onClick={() => {
+                        if (speakingTurn === turn.id) {
+                          stopSpeech();
+                          return;
+                        }
+                        const spoken = turn.items
+                          .filter(
+                            (item): item is { kind: "text"; text: string } =>
+                              item.kind === "text",
+                          )
+                          .map((item) => item.text)
+                          .join("");
+                        void playSpeech(turn.id, spoken);
+                      }}
+                      className="flex h-7 w-fit items-center gap-1.5 rounded-md px-1.5 text-[11.5px] text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
+                    >
+                      {speakingTurn === turn.id ? (
+                        <Square size={13} strokeWidth={iconStroke} aria-hidden="true" />
+                      ) : (
+                        <Volume2 size={14} strokeWidth={iconStroke} aria-hidden="true" />
+                      )}
+                      {speakingTurn === turn.id ? "Stop" : "Read aloud"}
+                    </button>
+                  ) : null}
                   {streaming && turn.items.length === 0 ? (
                     <p className="flex gap-1" aria-label="Assistant is working">
                       <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-neutral-300" />
@@ -602,6 +711,15 @@ export default function DshApp() {
           </div>
         </div>
 
+        {speechNotice !== null ? (
+          <p
+            role="alert"
+            className="mx-auto w-full max-w-[780px] px-3 pb-1 text-[11.5px] text-rose-600"
+          >
+            {speechNotice}
+          </p>
+        ) : null}
+
         <Composer
           value={draft}
           onChange={setDraft}
@@ -609,6 +727,8 @@ export default function DshApp() {
           streaming={streaming}
           model={model}
           onModel={setModel}
+          speechEnabled={speechEnabled}
+          onToggleSpeech={toggleSpeech}
           turns={turns.filter((turn) => turn.role === "user").length}
           steps={steps}
           tokens={tokens}

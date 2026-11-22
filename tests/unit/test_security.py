@@ -61,6 +61,19 @@ def test_chat_has_its_own_stricter_bucket() -> None:
     assert client.get("/api/items").status_code == 200
 
 
+def test_tts_has_its_own_bucket() -> None:
+    app = FastAPI()
+    app.add_middleware(RateLimitMiddleware, per_minute=10, chat_per_minute=10, tts_per_minute=1)
+
+    @app.post("/api/tts")
+    def speech() -> dict:
+        return {"ok": True}
+
+    client = TestClient(app)
+    assert client.post("/api/tts").status_code == 200
+    assert client.post("/api/tts").status_code == 429
+
+
 def test_health_is_never_limited() -> None:
     client = TestClient(_limited_app(per_minute=1))
     for _ in range(5):

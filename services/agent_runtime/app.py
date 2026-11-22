@@ -26,6 +26,7 @@ from agent_runtime.routes.model import build_model_router
 from agent_runtime.routes.openai_compat import build_openai_router
 from agent_runtime.routes.ops import build_ops_router
 from agent_runtime.routes.tasks import build_tasks_router
+from agent_runtime.routes.tts import build_tts_router
 from agent_runtime.routes.workspaces import build_workspaces_router
 from agent_runtime.security import (
     BasicAuthMiddleware,
@@ -249,6 +250,7 @@ def create_app(
             RateLimitMiddleware,
             per_minute=settings.rate_limit_per_minute,
             chat_per_minute=settings.rate_limit_chat_per_minute,
+            tts_per_minute=settings.tts_rate_per_minute,
             trust_proxy=settings.rate_limit_trust_proxy,
         )
     app.add_middleware(RequestSizeLimitMiddleware, max_bytes=settings.max_request_bytes)
@@ -308,6 +310,7 @@ def create_app(
     # M6: 运维 API（SLO 状态 / 错误预算）
     app.include_router(build_ops_router(settings))
     app.include_router(accounting_router)
+    app.include_router(build_tts_router(settings))
 
     @app.get("/health", tags=["system"])
     async def health() -> dict[str, str]:

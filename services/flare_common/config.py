@@ -94,6 +94,14 @@ class Settings(BaseSettings):
     # F9.3：OpenAI 兼容 API 认证（FLARE_API_KEY；空=不校验，生产务必配置）
     api_key: str = ""
 
+    # 语音回复（TTS）：OpenAI 兼容 speech 端点（本地默认 Kokoro，端口 8023）
+    tts_enabled: bool = True
+    tts_url: str = "http://127.0.0.1:8023/v1/audio/speech"
+    tts_voice: str = "af_bella"
+    tts_speed: float = 0.88
+    tts_timeout: float = 90.0
+    tts_rate_per_minute: int = 30
+
     # 安全加固：响应头 / 请求体上限 / 限流 / 文档暴露（None=按环境取默认）
     security_headers: bool = True
     max_request_bytes: int = 25 * 1024 * 1024
