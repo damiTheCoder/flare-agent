@@ -336,7 +336,7 @@ export default function DshApp() {
         title={sidebarOpen ? undefined : item.label}
         className={
           sidebarOpen
-            ? `group flex h-11 w-full items-center gap-2 rounded-md pl-2.5 pr-1.5 text-left text-[13px] transition-colors focus-visible:outline-none lg:h-9 focus-visible:ring-2 focus-visible:ring-neutral-900/15 ${
+            ? `group flex h-11 w-full items-center gap-2 rounded-md pl-2.5 pr-1.5 text-left text-[13.5px] transition-colors focus-visible:outline-none lg:h-9 focus-visible:ring-2 focus-visible:ring-neutral-900/15 ${
                 active
                   ? "bg-neutral-200/80 font-medium text-neutral-900"
                   : "text-neutral-600 hover:bg-neutral-200/50 hover:text-neutral-900"
@@ -362,7 +362,7 @@ export default function DshApp() {
             />
           ) : (
             <Icon
-              size={iconSize.lg}
+              size={iconSize.xl}
               strokeWidth={iconStroke}
               aria-hidden="true"
               className={
@@ -441,7 +441,7 @@ export default function DshApp() {
               className="flex h-10 w-full items-center gap-2 rounded-md bg-neutral-100 px-2.5 text-left text-[13px] font-medium text-neutral-800 transition-colors hover:bg-neutral-200/70 lg:h-9 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
             >
               <span className="flex w-5 shrink-0 justify-center">
-                <Plus size={iconSize.md} strokeWidth={iconStroke} aria-hidden="true" />
+                <Plus size={iconSize.lg} strokeWidth={iconStroke} aria-hidden="true" />
               </span>
               New chat
             </button>
@@ -453,7 +453,7 @@ export default function DshApp() {
               title="New chat"
               className="mx-auto grid h-10 w-10 place-items-center rounded-md bg-neutral-100 transition-colors hover:bg-neutral-200/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
             >
-              <Plus size={iconSize.lg} strokeWidth={iconStroke} aria-hidden="true" />
+              <Plus size={iconSize.xl} strokeWidth={iconStroke} aria-hidden="true" />
             </button>
           )}
         </div>
@@ -509,7 +509,7 @@ export default function DshApp() {
               <nav className="flex flex-col gap-0.5">
                 <button
                   type="button"
-                  className="flex h-9 w-full items-center rounded-md bg-neutral-200/70 px-2.5 text-left text-[13px] text-neutral-700 transition-colors hover:bg-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
+                  className="flex h-9 w-full items-center rounded-md bg-neutral-200/70 px-2.5 text-left text-[13.5px] text-neutral-700 transition-colors hover:bg-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
                 >
                   <span className="truncate">{sessionTitle}</span>
                 </button>
