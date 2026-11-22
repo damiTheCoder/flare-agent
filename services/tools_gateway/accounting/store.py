@@ -84,6 +84,51 @@ CREATE TABLE IF NOT EXISTS journal_lines (
 );
 CREATE INDEX IF NOT EXISTS idx_lines_entry ON journal_lines (entry_id);
 CREATE INDEX IF NOT EXISTS idx_lines_account ON journal_lines (company_id, account_id);
+CREATE TABLE IF NOT EXISTS customers (
+    id         TEXT PRIMARY KEY,
+    company_id TEXT NOT NULL,
+    name       TEXT NOT NULL,
+    email      TEXT,
+    phone      TEXT,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_customers_company ON customers (company_id, name);
+CREATE TABLE IF NOT EXISTS items (
+    id             TEXT PRIMARY KEY,
+    company_id     TEXT NOT NULL,
+    name           TEXT NOT NULL,
+    sku            TEXT,
+    price          TEXT NOT NULL DEFAULT '0.00',
+    cost           TEXT NOT NULL DEFAULT '0.00',
+    stock_quantity INTEGER NOT NULL DEFAULT 0,
+    created_at     TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_items_company ON items (company_id, name);
+CREATE TABLE IF NOT EXISTS sales_invoices (
+    id             TEXT PRIMARY KEY,
+    company_id     TEXT NOT NULL,
+    customer_id    TEXT NOT NULL,
+    invoice_number TEXT NOT NULL,
+    date           TEXT NOT NULL,
+    due_date       TEXT NOT NULL,
+    status         TEXT NOT NULL DEFAULT 'DRAFT',
+    total_amount   TEXT NOT NULL DEFAULT '0.00',
+    amount_paid    TEXT NOT NULL DEFAULT '0.00',
+    created_at     TEXT NOT NULL,
+    UNIQUE (company_id, invoice_number)
+);
+CREATE INDEX IF NOT EXISTS idx_invoices_company ON sales_invoices (company_id, date);
+CREATE TABLE IF NOT EXISTS invoice_lines (
+    id          TEXT PRIMARY KEY,
+    company_id  TEXT NOT NULL,
+    invoice_id  TEXT NOT NULL,
+    item_id     TEXT,
+    description TEXT NOT NULL,
+    quantity    TEXT NOT NULL,
+    unit_price  TEXT NOT NULL,
+    total       TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_invoice_lines_invoice ON invoice_lines (invoice_id);
 """
 
 _connection: sqlite3.Connection | None = None
@@ -377,3 +422,239 @@ def locked_entries(company_id: str) -> list[dict[str, Any]]:
         .fetchall()
     )
     return [dict(row) for row in rows]
+
+
+# ---------------------------------------------------------------------------
+# accounts by seeded name
+# ---------------------------------------------------------------------------
+
+
+def account_by_name(company_id: str, name: str) -> dict[str, Any] | None:
+    row = (
+        connect()
+        .execute("SELECT * FROM accounts WHERE company_id = ? AND name = ?", (company_id, name))
+        .fetchone()
+    )
+    return dict(row) if row is not None else None
+
+
+# ---------------------------------------------------------------------------
+# customers
+# ---------------------------------------------------------------------------
+
+
+def insert_customer(
+    company_id: str, *, name: str, email: str | None, phone: str | None
+) -> dict[str, Any]:
+    customer_id = new_id("cus")
+    connection = connect()
+    with connection:
+        connection.execute(
+            "INSERT INTO customers (id, company_id, name, email, phone, created_at)"
+            " VALUES (?, ?, ?, ?, ?, ?)",
+            (customer_id, company_id, name, email, phone, now_iso()),
+        )
+    row = connection.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
+    return dict(row)
+
+
+def list_customers(company_id: str) -> list[dict[str, Any]]:
+    rows = (
+        connect()
+        .execute("SELECT * FROM customers WHERE company_id = ? ORDER BY name", (company_id,))
+        .fetchall()
+    )
+    return [dict(row) for row in rows]
+
+
+def get_customer(company_id: str, customer_id: str) -> dict[str, Any] | None:
+    row = (
+        connect()
+        .execute(
+            "SELECT * FROM customers WHERE company_id = ? AND id = ?", (company_id, customer_id)
+        )
+        .fetchone()
+    )
+    return dict(row) if row is not None else None
+
+
+# ---------------------------------------------------------------------------
+# items
+# ---------------------------------------------------------------------------
+
+
+def insert_item(
+    company_id: str,
+    *,
+    name: str,
+    sku: str | None,
+    price: str,
+    cost: str,
+    stock_quantity: int,
+) -> dict[str, Any]:
+    item_id = new_id("itm")
+    connection = connect()
+    with connection:
+        connection.execute(
+            "INSERT INTO items (id, company_id, name, sku, price, cost, stock_quantity, created_at)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (item_id, company_id, name, sku, price, cost, stock_quantity, now_iso()),
+        )
+    row = connection.execute("SELECT * FROM items WHERE id = ?", (item_id,)).fetchone()
+    return dict(row)
+
+
+def list_items(company_id: str) -> list[dict[str, Any]]:
+    rows = (
+        connect()
+        .execute("SELECT * FROM items WHERE company_id = ? ORDER BY name", (company_id,))
+        .fetchall()
+    )
+    return [dict(row) for row in rows]
+
+
+def get_item(company_id: str, item_id: str) -> dict[str, Any] | None:
+    row = (
+        connect()
+        .execute("SELECT * FROM items WHERE company_id = ? AND id = ?", (company_id, item_id))
+        .fetchone()
+    )
+    return dict(row) if row is not None else None
+
+
+def items_by_ids(company_id: str, ids: list[str]) -> dict[str, dict[str, Any]]:
+    if not ids:
+        return {}
+    placeholders = ",".join("?" for _ in ids)
+    rows = (
+        connect()
+        .execute(
+            f"SELECT * FROM items WHERE company_id = ? AND id IN ({placeholders})",
+            (company_id, *ids),
+        )
+        .fetchall()
+    )
+    return {row["id"]: dict(row) for row in rows}
+
+
+def decrement_stock(company_id: str, item_id: str, units: int) -> None:
+    if units <= 0:
+        return
+    connection = connect()
+    with connection:
+        connection.execute(
+            "UPDATE items SET stock_quantity = stock_quantity - ?"
+            " WHERE company_id = ? AND id = ?",
+            (units, company_id, item_id),
+        )
+
+
+# ---------------------------------------------------------------------------
+# sales invoices
+# ---------------------------------------------------------------------------
+
+
+def next_invoice_number(company_id: str) -> str:
+    row = (
+        connect()
+        .execute("SELECT COUNT(*) AS total FROM sales_invoices WHERE company_id = ?", (company_id,))
+        .fetchone()
+    )
+    return f"INV-{int(row['total']) + 1:04d}"
+
+
+def insert_invoice(
+    company_id: str,
+    *,
+    number: str,
+    customer_id: str,
+    date: str,
+    due_date: str,
+    total: str,
+    lines: list[tuple[str | None, str, str, str, str]],
+) -> dict[str, Any]:
+    """Create a DRAFT invoice and its lines atomically."""
+    invoice_id = new_id("inv")
+    connection = connect()
+    with connection:
+        connection.execute(
+            "INSERT INTO sales_invoices"
+            " (id, company_id, customer_id, invoice_number, date, due_date, status,"
+            "  total_amount, amount_paid, created_at)"
+            " VALUES (?, ?, ?, ?, ?, ?, 'DRAFT', ?, '0.00', ?)",
+            (invoice_id, company_id, customer_id, number, date, due_date, total, now_iso()),
+        )
+        for item_id, description, quantity, unit_price, line_total in lines:
+            connection.execute(
+                "INSERT INTO invoice_lines"
+                " (id, company_id, invoice_id, item_id, description, quantity, unit_price, total)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    new_id("inl"),
+                    company_id,
+                    invoice_id,
+                    item_id,
+                    description,
+                    quantity,
+                    unit_price,
+                    line_total,
+                ),
+            )
+    invoice = get_invoice(company_id, invoice_id)
+    assert invoice is not None
+    return invoice
+
+
+def get_invoice(company_id: str, invoice_id: str) -> dict[str, Any] | None:
+    connection = connect()
+    row = connection.execute(
+        "SELECT * FROM sales_invoices WHERE company_id = ? AND id = ?",
+        (company_id, invoice_id),
+    ).fetchone()
+    if row is None:
+        return None
+    invoice = dict(row)
+    lines = connection.execute(
+        "SELECT * FROM invoice_lines WHERE company_id = ? AND invoice_id = ? ORDER BY id",
+        (company_id, invoice_id),
+    ).fetchall()
+    invoice["lines"] = [dict(line) for line in lines]
+    customer = connection.execute(
+        "SELECT name FROM customers WHERE company_id = ? AND id = ?",
+        (company_id, invoice["customer_id"]),
+    ).fetchone()
+    invoice["customer"] = customer["name"] if customer is not None else None
+    return invoice
+
+
+def list_invoices(company_id: str) -> list[dict[str, Any]]:
+    rows = (
+        connect()
+        .execute(
+            "SELECT id FROM sales_invoices WHERE company_id = ?"
+            " ORDER BY date DESC, created_at DESC",
+            (company_id,),
+        )
+        .fetchall()
+    )
+    invoices = []
+    for row in rows:
+        invoice = get_invoice(company_id, row["id"])
+        if invoice is not None:
+            invoices.append(invoice)
+    return invoices
+
+
+def update_invoice_payment(
+    company_id: str, invoice_id: str, *, amount_paid: str, status: str
+) -> dict[str, Any]:
+    connection = connect()
+    with connection:
+        connection.execute(
+            "UPDATE sales_invoices SET amount_paid = ?, status = ?"
+            " WHERE company_id = ? AND id = ?",
+            (amount_paid, status, company_id, invoice_id),
+        )
+    invoice = get_invoice(company_id, invoice_id)
+    assert invoice is not None
+    return invoice

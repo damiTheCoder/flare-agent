@@ -207,14 +207,21 @@ def _trial_balance(company: dict[str, Any], _args: dict[str, Any]) -> dict[str, 
 # ---------------------------------------------------------------------------
 
 
-def _propose_journal(company: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
-    lines = _normalize_lines(args.get("lines"))
-    journal_date = _date(args.get("date"), "date", default_today=True)
-    memo = args.get("memo")
+def propose_entry(
+    company: dict[str, Any],
+    *,
+    date: object,
+    memo: object,
+    lines: object,
+) -> dict[str, Any]:
+    """Validate and persist a PENDING journal. Used by every domain that
+    raises a journal (sales, purchases, payroll, ...), never posts."""
+    normalized = _normalize_lines(lines)
+    journal_date = _date(date, "date", default_today=True)
     memo_text = str(memo).strip() if isinstance(memo, str) and memo.strip() else None
 
-    found = store.accounts_by_ids(company["id"], [line[0] for line in lines])
-    missing = [account_id for account_id, _debit, _credit in lines if account_id not in found]
+    found = store.accounts_by_ids(company["id"], [line[0] for line in normalized])
+    missing = [account_id for account_id, _debit, _credit in normalized if account_id not in found]
     if missing:
         raise AccountingError(NOT_FOUND, f"Account(s) not found: {', '.join(missing)}")
 
@@ -222,9 +229,15 @@ def _propose_journal(company: dict[str, Any], args: dict[str, Any]) -> dict[str,
         company["id"],
         date=journal_date,
         memo=memo_text,
-        lines=[(account_id, fmt(debit), fmt(credit)) for account_id, debit, credit in lines],
+        lines=[(account_id, fmt(debit), fmt(credit)) for account_id, debit, credit in normalized],
     )
-    payload = _entry_payload(entry)
+    return _entry_payload(entry)
+
+
+def _propose_journal(company: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
+    payload = propose_entry(
+        company, date=args.get("date"), memo=args.get("memo"), lines=args.get("lines")
+    )
     payload["note"] = "PENDING: balances are unchanged until approve_journal is approved"
     return payload
 
@@ -548,7 +561,6 @@ def ledger_tools() -> list[Tool]:
                     "memo": {"type": "string", "description": "Short description."},
                     "lines": {
                         "type": "array",
-                        "minItems": 1,
                         "items": {
                             "type": "object",
                             "additionalProperties": False,
