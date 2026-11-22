@@ -95,6 +95,56 @@ def test_google_start_redirects_when_configured(tmp_path: Path) -> None:
         assert "redirect_uri=http%3A%2F%2Flocalhost%3A8000%2Fauth%2Fgoogle%2Fcallback" in location
 
 
+class _FakeResponse:
+    def __init__(self, payload: dict) -> None:
+        self._payload = payload
+
+    def raise_for_status(self) -> None:
+        return None
+
+    def json(self) -> dict:
+        return self._payload
+
+
+class _FakeGoogle:
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
+        return False
+
+    async def post(self, *args, **kwargs):
+        return _FakeResponse({"access_token": "google-token"})
+
+    async def get(self, *args, **kwargs):
+        return _FakeResponse(
+            {"sub": "google-1", "email": "ada@example.com", "name": "Ada Lovelace"}
+        )
+
+
+def test_google_callback_issues_a_session(tmp_path: Path, monkeypatch) -> None:
+    from agent_runtime import auth as auth_module
+
+    monkeypatch.setattr(auth_module.httpx, "AsyncClient", lambda timeout: _FakeGoogle())
+    app = create_app(
+        _settings(
+            tmp_path,
+            google_client_id="client-123.apps.googleusercontent.com",
+            google_client_secret="GOCSPX-test",
+        )
+    )
+    client = TestClient(app)
+    state = sign_session({"purpose": "oauth", "nonce": "n"}, "test-secret", 600)
+    response = client.get(f"/auth/google/callback?code=abc&state={state}", follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["location"] == "/"
+    session = client.get("/api/auth/session").json()
+    assert session["authenticated"] is True
+    assert session["user"]["email"] == "ada@example.com"
+    assert session["user"]["name"] == "Ada Lovelace"
+    assert session["user"]["companyId"] == "acme"
+
+
 def test_prompt_states_the_signed_in_identity(tmp_path: Path) -> None:
     registry = create_default_registry(workspace=str(tmp_path))
     token = set_identity({"name": "Damian", "email": "damian@example.com", "companyId": "acme"})

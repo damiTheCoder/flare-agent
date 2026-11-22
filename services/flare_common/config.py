@@ -101,8 +101,13 @@ class Settings(BaseSettings):
     auth_required: bool | None = None
     session_secret: str = ""
     session_ttl_hours: int = 168
-    google_client_id: str = ""
-    google_client_secret: str = ""
+    google_client_id: str = Field(
+        default="", validation_alias=AliasChoices("FLARE_GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_ID")
+    )
+    google_client_secret: str = Field(
+        default="",
+        validation_alias=AliasChoices("FLARE_GOOGLE_CLIENT_SECRET", "GOOGLE_CLIENT_SECRET"),
+    )
     app_base_url: str = "http://127.0.0.1:8000"
     auth_allow_local: bool = False
 
