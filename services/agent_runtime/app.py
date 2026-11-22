@@ -22,6 +22,7 @@ from agent_runtime.model_config import ModelConfigStore
 from agent_runtime.routes.accounting import router as accounting_router
 from agent_runtime.routes.approval import build_approval_router
 from agent_runtime.routes.capabilities import build_capabilities_router
+from agent_runtime.routes.commands import build_commands_router
 from agent_runtime.routes.kb import build_kb_router
 from agent_runtime.routes.memory import build_memory_router
 from agent_runtime.routes.model import build_model_router
@@ -323,6 +324,7 @@ def create_app(
     # M6: 运维 API（SLO 状态 / 错误预算）
     app.include_router(build_ops_router(settings))
     app.include_router(build_auth_router(settings, enabled=auth_enabled))
+    app.include_router(build_commands_router(settings))
     app.include_router(accounting_router)
     app.include_router(build_tts_router(settings))
 
