@@ -38,9 +38,9 @@ export function Composer({
   const [integrationsOpen, setIntegrationsOpen] = useState(false);
 
   return (
-    <div className="px-5 pb-2.5">
+    <div className="px-3 pb-2 sm:px-5">
       <div className="mx-auto w-full max-w-[780px]">
-        <div className="flex h-11 items-center gap-0.5 rounded-2xl border border-neutral-200 bg-neutral-100/80 px-1.5 shadow-[0_4px_18px_rgba(16,16,20,0.07)]">
+        <div className="flex h-10 items-center gap-0.5 rounded-2xl border border-neutral-200 bg-neutral-100/80 px-1.5 shadow-[0_4px_18px_rgba(16,16,20,0.07)] sm:h-11">
           <button
             type="button"
             aria-label="Add"
@@ -98,7 +98,7 @@ export function Composer({
               aria-haspopup="menu"
               aria-expanded={modelOpen}
               onClick={() => setModelOpen((open) => !open)}
-              className="flex h-7 max-w-[160px] items-center gap-1 rounded-full px-1.5 text-[12px] text-neutral-600 hover:bg-white"
+              className="flex h-7 max-w-[104px] items-center gap-1 rounded-full px-1.5 text-[11.5px] text-neutral-600 hover:bg-white sm:max-w-[160px] sm:text-[12px]"
             >
               <span className="truncate">{model}</span>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -152,7 +152,7 @@ export function Composer({
 
         <p
           data-testid="telemetry"
-          className="mt-1 flex justify-end gap-1 text-[10px] leading-4 text-neutral-400"
+          className="mt-1 flex flex-wrap items-center justify-center gap-x-1 gap-y-0 text-[10px] leading-4 text-neutral-400 sm:justify-end"
         >
           <span>
             {turns} turns {steps} steps
@@ -163,8 +163,8 @@ export function Composer({
           <span>{tokens.toLocaleString()} tok</span>
           <span>•</span>
           <span>Cache hit {cacheHit}%</span>
-          <span className="mx-1 text-neutral-300">|</span>
-          <span>{contextUsed}%</span>
+          <span className="mx-1 hidden text-neutral-300 sm:inline">|</span>
+          <span className="hidden sm:inline">{contextUsed}%</span>
         </p>
       </div>
     </div>

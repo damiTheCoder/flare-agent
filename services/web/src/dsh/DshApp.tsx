@@ -26,7 +26,9 @@ export default function DshApp() {
   const [tools, setTools] = useState<Record<string, ToolState>>({});
   const [draft, setDraft] = useState("");
   const [streaming, setStreaming] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(
+    () => typeof window !== "undefined" && window.innerWidth >= 1024,
+  );
   const [model, setModel] = useState("DeepSeek V4 Flash");
   const [tokens, setTokens] = useState(0);
   const [steps, setSteps] = useState(0);
@@ -74,6 +76,7 @@ export default function DshApp() {
 
       setTurns((current) => [...current, userTurn, { id: assistantId, role: "assistant", items: [] }]);
       setDraft("");
+      if (window.innerWidth < 1024) setSidebarOpen(false);
       setStreaming(true);
       stats.current = { started: performance.now(), tokens: 0 };
       const controller = new AbortController();
@@ -140,6 +143,7 @@ export default function DshApp() {
     setTokens(0);
     setSteps(0);
     setTokensPerSecond(0);
+    if (window.innerWidth < 1024) setSidebarOpen(false);
   };
 
   const transcript = () => {
@@ -186,7 +190,20 @@ export default function DshApp() {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-white font-sans text-[13px] text-neutral-900">
       {sidebarOpen ? (
-        <aside className="flex w-[250px] shrink-0 flex-col border-r border-neutral-200 bg-neutral-50/80 px-2.5 py-2.5">
+        <button
+          type="button"
+          aria-label="Close sidebar"
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 z-20 bg-black/20 lg:hidden"
+        />
+      ) : null}
+      <aside
+        className={`${
+          sidebarOpen
+            ? "fixed inset-y-0 left-0 z-30 flex w-[250px] flex-col border-r border-neutral-200 bg-neutral-50 px-2.5 py-2.5 transition-transform duration-150 lg:static lg:z-auto lg:bg-neutral-50/80"
+            : "hidden"
+        } overflow-y-auto`}
+      >
           <div className="flex items-center gap-2 px-1 pb-2">
             <span className="grid h-[18px] w-[18px] place-items-center rounded-[5px] bg-blue-600 text-[10px] font-bold text-white">
               M
@@ -227,7 +244,6 @@ export default function DshApp() {
             </button>
           </div>
         </aside>
-      ) : null}
 
       <main className="flex min-w-0 flex-1 flex-col">
         <Header
@@ -237,7 +253,7 @@ export default function DshApp() {
           onDownloadLog={downloadLog}
         />
 
-        <div ref={feedRef} className="flex-1 overflow-y-auto px-6 py-4">
+        <div ref={feedRef} className="flex-1 overflow-y-auto px-3 py-3 sm:px-5 sm:py-4 lg:px-6">
           <div className="mx-auto flex max-w-[760px] flex-col gap-3">
             {turns.length === 0 ? (
               <div className="pt-6">

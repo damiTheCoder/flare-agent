@@ -36,7 +36,7 @@ export function Header({ title, onToggleSidebar, onCopyMarkdown, onDownloadLog }
   }, [menuOpen]);
 
   return (
-    <header className="relative flex h-11 shrink-0 items-center gap-2 border-b border-neutral-200 bg-white px-3">
+    <header className="relative flex h-11 shrink-0 items-center gap-1.5 border-b border-neutral-200 bg-white px-2 sm:gap-2 sm:px-3">
       <button
         type="button"
         aria-label="Toggle sidebar"
@@ -52,9 +52,9 @@ export function Header({ title, onToggleSidebar, onCopyMarkdown, onDownloadLog }
       <span className="grid h-[18px] w-[18px] place-items-center rounded-[5px] bg-blue-600 text-[10px] font-bold text-white">
         M
       </span>
-      <span className="text-[13px] font-semibold tracking-tight text-neutral-900">MicroBalance</span>
+      <span className="hidden text-[13px] font-semibold tracking-tight text-neutral-900 sm:inline">MicroBalance</span>
 
-      <span className="pointer-events-none absolute left-1/2 max-w-[46%] -translate-x-1/2 truncate text-[12px] text-neutral-500">
+      <span className="pointer-events-none absolute left-1/2 max-w-[42%] -translate-x-1/2 truncate text-[11.5px] text-neutral-500 sm:max-w-[46%] sm:text-[12px]">
         {title}
       </span>
 

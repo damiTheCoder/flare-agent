@@ -127,12 +127,12 @@ export function ToolCard({ call, result, onContextMenu }: Props) {
           </Section>
 
           <Section label="Items">
-            <table className="w-full border-collapse text-[11.5px]">
+            <div className="-mx-1 overflow-x-auto px-1"><table className="w-full min-w-[260px] border-collapse text-[11.5px]">
               <thead>
                 <tr className="text-[9px] uppercase tracking-wide text-slate-400">
                   <th className="pb-0.5 text-left font-semibold">Item</th>
                   <th className="pb-0.5 text-right font-semibold">Qty</th>
-                  <th className="pb-0.5 text-right font-semibold">Unit</th>
+                  <th className="hidden pb-0.5 text-right font-semibold sm:table-cell">Unit</th>
                   <th className="pb-0.5 text-right font-semibold">Total</th>
                 </tr>
               </thead>
@@ -141,7 +141,7 @@ export function ToolCard({ call, result, onContextMenu }: Props) {
                   <tr key={`${line.description}-${index}`} className="border-t border-sky-200/50">
                     <td className="py-1 pr-2 text-slate-800">{line.description}</td>
                     <td className="py-1 text-right tabular-nums">{line.quantity}</td>
-                    <td className="py-1 text-right tabular-nums">
+                    <td className="hidden py-1 text-right tabular-nums sm:table-cell">
                       {line.unitPrice === "catalog" ? "catalog" : money(line.unitPrice)}
                     </td>
                     <td className="py-1 text-right tabular-nums">
@@ -150,10 +150,10 @@ export function ToolCard({ call, result, onContextMenu }: Props) {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </Section>
 
-          <div className="mt-2 flex items-center gap-3 border-t border-sky-200/60 pt-1.5 text-[11px] text-slate-500">
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-sky-200/60 pt-1.5 text-[11px] text-slate-500">
             <span>
               Subtotal <span className="text-slate-700">{money(data.subtotal)}</span>
             </span>
