@@ -171,6 +171,19 @@ CREATE TABLE IF NOT EXISTS bill_lines (
     total       TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_bill_lines_bill ON bill_lines (bill_id);
+CREATE TABLE IF NOT EXISTS bank_transactions (
+    id                 TEXT PRIMARY KEY,
+    company_id         TEXT NOT NULL,
+    date               TEXT NOT NULL,
+    description        TEXT NOT NULL,
+    amount             TEXT NOT NULL,
+    type               TEXT NOT NULL,
+    status             TEXT NOT NULL DEFAULT 'UNRECONCILED',
+    matched_invoice_id TEXT,
+    matched_bill_id    TEXT,
+    created_at         TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_bank_txn_company ON bank_transactions (company_id, status);
 """
 
 _connection: sqlite3.Connection | None = None
@@ -901,3 +914,100 @@ def set_stock(company_id: str, item_id: str, quantity: int) -> dict[str, Any]:
     item = get_item(company_id, item_id)
     assert item is not None
     return item
+
+
+# ---------------------------------------------------------------------------
+# bank transactions
+# ---------------------------------------------------------------------------
+
+
+def insert_bank_transaction(
+    company_id: str,
+    *,
+    date: str,
+    description: str,
+    amount: str,
+    txn_type: str,
+) -> dict[str, Any]:
+    txn_id = new_id("btx")
+    connection = connect()
+    with connection:
+        connection.execute(
+            "INSERT INTO bank_transactions"
+            " (id, company_id, date, description, amount, type, status, created_at)"
+            " VALUES (?, ?, ?, ?, ?, ?, 'UNRECONCILED', ?)",
+            (txn_id, company_id, date, description, amount, txn_type, now_iso()),
+        )
+    row = connection.execute("SELECT * FROM bank_transactions WHERE id = ?", (txn_id,)).fetchone()
+    return dict(row)
+
+
+def get_bank_transaction(company_id: str, txn_id: str) -> dict[str, Any] | None:
+    row = (
+        connect()
+        .execute(
+            "SELECT * FROM bank_transactions WHERE company_id = ? AND id = ?",
+            (company_id, txn_id),
+        )
+        .fetchone()
+    )
+    return dict(row) if row is not None else None
+
+
+def list_bank_transactions(company_id: str, status: str | None = None) -> list[dict[str, Any]]:
+    sql = "SELECT * FROM bank_transactions WHERE company_id = ?"
+    params: list[Any] = [company_id]
+    if status is not None:
+        sql += " AND status = ?"
+        params.append(status)
+    sql += " ORDER BY date DESC, created_at DESC"
+    rows = connect().execute(sql, params).fetchall()
+    return [dict(row) for row in rows]
+
+
+def find_bank_match(
+    company_id: str, *, invoice_id: str | None = None, bill_id: str | None = None
+) -> dict[str, Any] | None:
+    if invoice_id is not None:
+        row = (
+            connect()
+            .execute(
+                "SELECT * FROM bank_transactions"
+                " WHERE company_id = ? AND matched_invoice_id = ? ORDER BY created_at LIMIT 1",
+                (company_id, invoice_id),
+            )
+            .fetchone()
+        )
+    elif bill_id is not None:
+        row = (
+            connect()
+            .execute(
+                "SELECT * FROM bank_transactions"
+                " WHERE company_id = ? AND matched_bill_id = ? ORDER BY created_at LIMIT 1",
+                (company_id, bill_id),
+            )
+            .fetchone()
+        )
+    else:
+        return None
+    return dict(row) if row is not None else None
+
+
+def mark_bank_reconciled(
+    company_id: str,
+    txn_id: str,
+    *,
+    invoice_id: str | None = None,
+    bill_id: str | None = None,
+) -> dict[str, Any]:
+    connection = connect()
+    with connection:
+        connection.execute(
+            "UPDATE bank_transactions"
+            " SET status = 'RECONCILED', matched_invoice_id = ?, matched_bill_id = ?"
+            " WHERE company_id = ? AND id = ?",
+            (invoice_id, bill_id, company_id, txn_id),
+        )
+    txn = get_bank_transaction(company_id, txn_id)
+    assert txn is not None
+    return txn

@@ -247,12 +247,10 @@ def _propose_journal(company: dict[str, Any], args: dict[str, Any]) -> dict[str,
 # ---------------------------------------------------------------------------
 
 
-def _approve_journal(company: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
-    journal_id = args.get("journalId")
-    if not isinstance(journal_id, str) or journal_id.strip() == "":
-        raise AccountingError(VALIDATION, "journalId is required")
-    journal_id = journal_id.strip()
-
+def post_entry(company: dict[str, Any], journal_id: str) -> dict[str, Any]:
+    """Post a PENDING entry exactly once. Shared by approve_journal and the
+    reconciliation flow, which is the one place that posts as part of an
+    approval action."""
     entry = store.get_entry(company["id"], journal_id)
     if entry is None:
         raise AccountingError(NOT_FOUND, f"Journal entry {journal_id} not found")
@@ -291,6 +289,13 @@ def _approve_journal(company: dict[str, Any], args: dict[str, Any]) -> dict[str,
     payload = _entry_payload(posted)
     payload["posted"] = True
     return payload
+
+
+def _approve_journal(company: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
+    journal_id = args.get("journalId")
+    if not isinstance(journal_id, str) or journal_id.strip() == "":
+        raise AccountingError(VALIDATION, "journalId is required")
+    return post_entry(company, journal_id.strip())
 
 
 # ---------------------------------------------------------------------------
