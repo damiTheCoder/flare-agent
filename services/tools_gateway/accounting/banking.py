@@ -216,9 +216,11 @@ def _reconcile(company: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
             f"Bill {bill['bill_number']} is already matched to transaction {existing['id']}",
         )
 
-    total = Decimal(bill["total_amount"])
+    # WHT was withheld at source, so the payable — and the ceiling for a
+    # match — is netPayable, exactly as in record_bill_payment.
+    net_payable = Decimal(bill["net_payable"])
     paid = Decimal(bill["amount_paid"])
-    outstanding = total - paid
+    outstanding = net_payable - paid
     if outstanding <= 0:
         raise AccountingError(STATE, f"Bill {bill['bill_number']} has no outstanding balance")
     if amount > outstanding:

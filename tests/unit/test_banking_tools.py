@@ -308,3 +308,44 @@ async def test_banking_permissions(reg):
     assert reg.get("get_bank_accounts").permission == "read"
     assert reg.get("get_unreconciled_bank_transactions").permission == "read"
     assert reg.get("reconcile_bank_transaction").permission == "destructive"
+
+
+async def test_outflow_ceiling_uses_net_payable(reg):
+    vendor = body(await call(reg, "create_vendor", companyId=COMPANY, name="Supply Co"))["id"]
+    bill = body(
+        await call(
+            reg,
+            "create_bill",
+            companyId=COMPANY,
+            vendorId=vendor,
+            date="2026-11-15",
+            whtRate=5,
+            items=[{"description": "Paper", "quantity": 1, "unitCost": "1000.00"}],
+        )
+    )["bill"]
+    assert bill["total"] == "1075.00"
+    assert bill["netPayable"] == "1025.00"
+
+    too_much = make_txn("1075.00", "OUTFLOW")
+    rejected = await call(
+        reg,
+        "reconcile_bank_transaction",
+        companyId=COMPANY,
+        transactionId=too_much["id"],
+        matchedId=bill["id"],
+        matchedType="BILL",
+    )
+    assert not rejected.ok
+    assert rejected.error_code == "VALIDATION"
+    assert "1025.00" in rejected.content
+
+    exact = make_txn("1025.00", "OUTFLOW")
+    accepted = await call(
+        reg,
+        "reconcile_bank_transaction",
+        companyId=COMPANY,
+        transactionId=exact["id"],
+        matchedId=bill["id"],
+        matchedType="BILL",
+    )
+    assert accepted.ok, accepted.content
