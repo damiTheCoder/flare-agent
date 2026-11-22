@@ -21,6 +21,7 @@ from tools_gateway.accounting.sales import register_sales_tools
 from tools_gateway.accounting.tax import register_tax_tools
 from tools_gateway.accounting.usage import register_usage_tools
 from tools_gateway.registry import PERMISSION_READ, Tool, ToolRegistry, ToolResult
+from tools_gateway.workspace_tools import build_workspace_tools
 
 
 async def _echo(**kwargs: str) -> ToolResult:
@@ -28,10 +29,12 @@ async def _echo(**kwargs: str) -> ToolResult:
     return ToolResult(ok=True, content=f"echo: {kwargs['text']}")
 
 
-def create_default_registry(sandbox=None) -> ToolRegistry:
+def create_default_registry(sandbox=None, workspace: str | None = None) -> ToolRegistry:
     """创建含全部内置工具的注册表。
 
     sandbox：可选 SandboxRunner，传入则注册 sandbox_run 工具（M4，Agent 可执行代码）。
+    workspace：可选工作区目录，传入则注册 read/write/edit/glob/grep/bash
+    （与会计工具同表，聊天和 REST 共用）。
     """
     registry = ToolRegistry()
     registry.register(
@@ -49,6 +52,9 @@ def create_default_registry(sandbox=None) -> ToolRegistry:
     )
     if sandbox is not None:
         registry.register(build_sandbox_run_tool(sandbox))
+    if workspace is not None:
+        for tool in build_workspace_tools(workspace):
+            registry.register(tool)
     # MicroBalance accounting tools, one registrar per domain.
     register_ledger_tools(registry)
     register_sales_tools(registry)

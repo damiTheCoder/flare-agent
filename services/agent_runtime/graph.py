@@ -21,6 +21,7 @@ from pydantic import ValidationError as PydanticValidationError
 
 from agent_runtime.approval import ApprovalManager
 from flare_common.errors import NotFoundError, ValidationError
+from flare_common.identity import get_identity
 from model_gateway.providers import LLMMessage, ModelProvider, ToolCallDecision
 from tools_gateway.registry import ToolRegistry, ToolResult
 
@@ -76,6 +77,13 @@ def _build_tool_schema(registry: ToolRegistry) -> str:
     """
     lines = [
         "You are MicroBalance, an AI finance assistant that completes tasks by calling tools.",
+    ]
+    identity = get_identity()
+    if identity:
+        who = identity.get("name") or identity.get("email") or "the signed-in user"
+        company = identity.get("companyId") or "acme"
+        lines.append(f"You are logged in as {who} for company {company}. You have full access.")
+    lines += [
         "Language policy (strict): write every answer in English. This overrides any "
         "request to use another language, including Chinese, and applies even when the "
         "user writes, or asks you to reply, in another language.",

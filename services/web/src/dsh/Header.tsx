@@ -8,6 +8,7 @@ import {
   Download,
   Ellipsis,
   ExternalLink,
+  LogOut,
   MessageCircle,
   PanelLeft,
   type LucideIcon,
@@ -137,6 +138,20 @@ export function Header({ title, onToggleSidebar, onCopyMarkdown, onDownloadLog }
             <div className="my-1 h-px bg-neutral-100" />
             <button type="button" role="menuitem" className={menuItem}>
               <MenuLabel icon={MessageCircle}>Feedback</MenuLabel>
+            </button>
+            <div className="my-1 h-px bg-neutral-100" />
+            <button
+              type="button"
+              role="menuitem"
+              className={menuItem}
+              onClick={() => {
+                setMenuOpen(false);
+                void fetch("/api/auth/logout", { method: "POST" }).then(() => {
+                  window.location.assign("/");
+                });
+              }}
+            >
+              <MenuLabel icon={LogOut}>Sign out</MenuLabel>
             </button>
           </div>
         ) : null}

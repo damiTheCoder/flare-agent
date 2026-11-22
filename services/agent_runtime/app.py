@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import time
 from contextlib import asynccontextmanager
 
@@ -16,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 from agent_runtime.approval import ApprovalManager, ApprovalPolicy, RedisApprovalBackend
+from agent_runtime.auth import AuthGateMiddleware, build_auth_router
 from agent_runtime.model_config import ModelConfigStore
 from agent_runtime.routes.accounting import router as accounting_router
 from agent_runtime.routes.approval import build_approval_router
@@ -164,7 +166,9 @@ def create_app(
         if mem is None:
             mem = MemoryManager()  # 开发默认：内存事实库 + 向量库
         sandbox = build_sandbox(settings)  # M4：开发=本地子进程；prod=容器(fail-fast 占位)
-        registry = create_default_registry(sandbox=sandbox)
+        registry = create_default_registry(
+            sandbox=sandbox, workspace=settings.workspace_dir or os.getcwd()
+        )
         registry.register(build_kb_search_tool(kb))
         for tool in build_memory_tools(mem):
             registry.register(tool)
@@ -234,6 +238,15 @@ def create_app(
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    auth_enabled = (
+        settings.auth_required
+        if settings.auth_required is not None
+        else bool(settings.session_secret)
+    )
+    if auth_enabled and not settings.session_secret:
+        raise FlareError("FLARE_SESSION_SECRET is required when auth is enabled")
+    if auth_enabled:
+        app.add_middleware(AuthGateMiddleware, settings=settings)
     # Added last = outermost: limits and headers cover every response,
     # including the 413/429s produced by the middleware below them.
     if settings.ui_auth_username and settings.ui_auth_password:
@@ -309,6 +322,7 @@ def create_app(
 
     # M6: 运维 API（SLO 状态 / 错误预算）
     app.include_router(build_ops_router(settings))
+    app.include_router(build_auth_router(settings, enabled=auth_enabled))
     app.include_router(accounting_router)
     app.include_router(build_tts_router(settings))
 

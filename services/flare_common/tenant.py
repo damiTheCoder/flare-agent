@@ -14,6 +14,8 @@ from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
+from flare_common.identity import get_identity
+
 DEFAULT_TENANT = os.environ.get("FLARE_COMPANY_ID", "").strip() or "acme"
 TENANT_HEADER = "X-Tenant-Id"
 
@@ -34,7 +36,12 @@ class TenantMiddleware(BaseHTTPMiddleware):
     """从请求头取租户注入 contextvar，并把租户回写响应头（便于排查）。"""
 
     async def dispatch(self, request: Request, call_next) -> Response:
-        tenant = request.headers.get(TENANT_HEADER, DEFAULT_TENANT).strip() or DEFAULT_TENANT
+        identity = get_identity() or {}
+        tenant = (
+            request.headers.get(TENANT_HEADER, "").strip()
+            or str(identity.get("companyId") or "")
+            or DEFAULT_TENANT
+        )
         token = _tenant_var.set(tenant)
         try:
             response = await call_next(request)

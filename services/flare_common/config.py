@@ -94,6 +94,18 @@ class Settings(BaseSettings):
     # F9.3：OpenAI 兼容 API 认证（FLARE_API_KEY；空=不校验，生产务必配置）
     api_key: str = ""
 
+    # Harness 工具的工作目录（read/write/edit/glob/grep/bash 绑定到这里）
+    workspace_dir: str = ""
+
+    # 登录门禁：Landing + Google OAuth（配置了 session_secret 即启用）
+    auth_required: bool | None = None
+    session_secret: str = ""
+    session_ttl_hours: int = 168
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    app_base_url: str = "http://127.0.0.1:8000"
+    auth_allow_local: bool = False
+
     # 语音回复（TTS）：OpenAI 兼容 speech 端点（本地默认 Kokoro，端口 8023）
     tts_enabled: bool = True
     tts_url: str = "http://127.0.0.1:8023/v1/audio/speech"

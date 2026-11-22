@@ -78,7 +78,8 @@ class ToolRegistry:
             from tools_gateway.workspace_tools import build_workspace_tools
 
             for tool in build_workspace_tools(cwd):
-                view.register(tool)
+                if tool.name not in view._tools:
+                    view.register(tool)
         return view
 
     def list(self) -> list[Tool]:

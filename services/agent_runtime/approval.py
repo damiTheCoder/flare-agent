@@ -95,12 +95,17 @@ class ApprovalPolicy:
         require_level: str = PERMISSION_DESTRUCTIVE,
         extra_tools: set[str] | None = None,
     ) -> None:
-        if require_level not in PERMISSION_ORDER:
-            raise ValueError(f"未知权限级别: {require_level!r}（应为 {sorted(PERMISSION_ORDER)}）")
-        self._require_rank = PERMISSION_ORDER[require_level]
+        if require_level != "off" and require_level not in PERMISSION_ORDER:
+            raise ValueError(
+                f"未知权限级别: {require_level!r}（应为 off 或 {sorted(PERMISSION_ORDER)}）"
+            )
+        self._disabled = require_level == "off"
+        self._require_rank = PERMISSION_ORDER.get(require_level, 0)
         self._extra = set(extra_tools or [])
 
     def requires_approval(self, tool: Tool) -> bool:
+        if self._disabled:
+            return False
         if tool.name in self._extra:
             return True
         return PERMISSION_ORDER.get(tool.permission, 0) >= self._require_rank
