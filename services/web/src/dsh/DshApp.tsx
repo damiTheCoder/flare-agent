@@ -1,8 +1,9 @@
 /** DSH-style shell: dense sidebar + chat feed + floating composer. */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { streamChat, type ChatMessage, type ToolCallEvent, type ToolResultEvent } from "./api";
+import { apiGet } from "./rest";
 import { Composer } from "./Composer";
 import { Header } from "./Header";
 import { ChartOfAccountsPage } from "./pages/Accounts";
@@ -293,6 +294,34 @@ export default function DshApp() {
     URL.revokeObjectURL(url);
   };
 
+  const [pendingCount, setPendingCount] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    apiGet<{ count: number }>("/api/journals/pending")
+      .then((data) => {
+        if (alive) setPendingCount(data.count);
+      })
+      .catch(() => {
+        /* the badge is optional; a failed count must not break navigation */
+      });
+    return () => {
+      alive = false;
+    };
+  }, [view]);
+
+  const activeNavRef = useRef<HTMLButtonElement | null>(null);
+  const navScrollRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const scroller = navScrollRef.current;
+    if (scroller === null) return;
+    // The rail keeps a stable icon order; the labelled list follows the active item.
+    if (!sidebarOpen) {
+      scroller.scrollTop = 0;
+      return;
+    }
+    activeNavRef.current?.scrollIntoView({ block: "nearest" });
+  }, [view, sidebarOpen]);
+
   const firstUser = turns.find((turn) => turn.role === "user");
   const sessionTitle =
     firstUser !== undefined ? `${firstUser.text.slice(0, 34)}${firstUser.text.length > 34 ? "…" : ""}` : "New session";
@@ -308,62 +337,129 @@ export default function DshApp() {
         />
       ) : null}
       <aside
-        className={`${
+        className={
           sidebarOpen
-            ? "fixed inset-y-0 left-0 z-30 flex w-[250px] flex-col border-r border-neutral-200 bg-neutral-50 px-3 py-3 transition-transform duration-150 lg:static lg:z-auto lg:bg-neutral-50/80"
-            : "hidden"
-        } overflow-y-auto`}
+            ? "fixed inset-y-0 left-0 z-30 flex w-[240px] flex-col border-r border-neutral-200 bg-neutral-50 lg:static lg:z-auto lg:bg-neutral-50/80"
+            : "hidden border-r border-neutral-200 bg-neutral-50/80 lg:flex lg:w-16 lg:flex-col"
+        }
       >
-          <div className="flex items-center gap-2 px-1 pb-3">
-            <span className="grid h-5 w-5 place-items-center rounded-[5px] bg-blue-600 text-[10.5px] font-bold text-white">
+        {sidebarOpen ? (
+          <div className="flex h-12 shrink-0 items-center gap-2 px-3">
+            <span className="grid h-6 w-6 place-items-center rounded-md bg-blue-600 text-[11px] font-bold text-white">
               M
             </span>
-            <span className="text-[13px] font-semibold tracking-tight text-neutral-900">MicroBalance</span>
+            <span className="text-[14px] font-semibold tracking-tight text-neutral-900">MicroBalance</span>
+            <button
+              type="button"
+              aria-label="Close navigation"
+              onClick={() => setSidebarOpen(false)}
+              className="ml-auto grid h-10 w-10 place-items-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-200/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15 lg:hidden"
+            >
+              <X size={iconSize.md} strokeWidth={iconStroke} aria-hidden="true" />
+            </button>
           </div>
+        ) : (
+          <div className="flex h-12 shrink-0 items-center justify-center">
+            <span className="grid h-6 w-6 place-items-center rounded-md bg-blue-600 text-[11px] font-bold text-white">
+              M
+            </span>
+          </div>
+        )}
 
-          <button
-            type="button"
-            onClick={newChat}
-            className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-neutral-200 bg-white text-[12.5px] font-medium text-neutral-700 shadow-sm transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
+        <div className={sidebarOpen ? "shrink-0 px-3 pb-2" : "shrink-0 pb-2"}>
+          {sidebarOpen ? (
+            <button
+              type="button"
+              onClick={newChat}
+              className="flex h-10 w-full items-center gap-2 rounded-md border border-neutral-200 bg-white px-2.5 text-left text-[13px] font-medium text-neutral-700 shadow-sm transition-colors hover:bg-neutral-50 lg:h-9 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
+            >
+              <span className="flex w-5 shrink-0 justify-center">
+                <Plus size={iconSize.md} strokeWidth={iconStroke} aria-hidden="true" />
+              </span>
+              New chat
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={newChat}
+              aria-label="New chat"
+              title="New chat"
+              className="mx-auto grid h-10 w-10 place-items-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-200/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
+            >
+              <Plus size={iconSize.lg} strokeWidth={iconStroke} aria-hidden="true" />
+            </button>
+          )}
+        </div>
+
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          <div
+            ref={navScrollRef}
+            className={`flex-1 overflow-y-auto px-3 ${sidebarOpen ? "pb-3" : "pb-1"}`}
           >
-            <Plus size={iconSize.md} strokeWidth={iconStroke} aria-hidden="true" />
-            New chat
-          </button>
-
-          <div className="mt-2 flex flex-col">
+          <div className={sidebarOpen ? "mt-1" : "mt-0"}>
             {NAV_GROUPS.map((group, index) => (
-              <div key={group.label ?? `standalone-${index}`} className={index === 0 ? "" : "mt-3"}>
-                {group.label !== null ? (
-                  <p className="px-1.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.07em] text-neutral-400">
+              <div
+                key={group.label ?? `standalone-${index}`}
+                className={index === 0 ? "" : sidebarOpen ? "mt-5" : "mt-2"}
+              >
+                {sidebarOpen && group.label !== null ? (
+                  <p className="px-2 pb-2 text-[11px] font-medium uppercase tracking-[0.04em] text-neutral-400">
                     {group.label}
                   </p>
                 ) : null}
-                <nav className="flex flex-col gap-px">
+                <nav
+                  className={
+                    sidebarOpen ? "flex flex-col gap-0.5" : "flex flex-col items-center gap-0.5"
+                  }
+                >
                   {group.items.map((item) => {
                     const Icon = navIcons[item.key];
+                    const active = view === item.key;
                     return (
                       <button
                         key={item.key}
+                        ref={active ? activeNavRef : undefined}
                         type="button"
                         onClick={() => selectView(item.key)}
-                        aria-current={view === item.key ? "page" : undefined}
-                        className={`group relative flex w-full items-center gap-2 rounded-md py-1.5 pl-2.5 pr-1.5 text-left text-[12.5px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15 ${
-                          view === item.key
-                            ? "bg-neutral-200/70 font-medium text-neutral-900 before:absolute before:left-0 before:top-1/2 before:h-3.5 before:w-[2px] before:-translate-y-1/2 before:rounded-full before:bg-blue-600 before:content-['']"
-                            : "text-neutral-600 hover:bg-neutral-200/50 hover:text-neutral-900"
-                        }`}
+                        aria-current={active ? "page" : undefined}
+                        aria-label={sidebarOpen ? undefined : item.label}
+                        title={sidebarOpen ? undefined : item.label}
+                        className={
+                          sidebarOpen
+                            ? `group flex h-11 w-full items-center gap-2 rounded-md pl-2.5 pr-1.5 text-left text-[13px] transition-colors focus-visible:outline-none lg:h-9 focus-visible:ring-2 focus-visible:ring-neutral-900/15 ${
+                                active
+                                  ? "bg-neutral-200/80 font-medium text-neutral-900"
+                                  : "text-neutral-600 hover:bg-neutral-200/50 hover:text-neutral-900"
+                              }`
+                            : `grid h-10 w-10 place-items-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15 ${
+                                active
+                                  ? "bg-neutral-200/80 text-neutral-900"
+                                  : "text-neutral-400 hover:bg-neutral-200/50 hover:text-neutral-600"
+                              }`
+                        }
                       >
-                        <Icon
-                          size={iconSize.lg}
-                          strokeWidth={iconStroke}
-                          aria-hidden="true"
-                          className={`shrink-0 ${
-                            view === item.key
-                              ? "text-neutral-600"
-                              : "text-neutral-400 group-hover:text-neutral-600"
-                          }`}
-                        />
-                        <span className="truncate">{item.label}</span>
+                        <span
+                          className={
+                            sidebarOpen ? "flex w-5 shrink-0 justify-center" : "flex justify-center"
+                          }
+                        >
+                          <Icon
+                            size={iconSize.lg}
+                            strokeWidth={iconStroke}
+                            aria-hidden="true"
+                            className={
+                              active
+                                ? "text-neutral-700"
+                                : "text-neutral-400 group-hover:text-neutral-600"
+                            }
+                          />
+                        </span>
+                        {sidebarOpen ? <span className="truncate">{item.label}</span> : null}
+                        {sidebarOpen && item.key === "approvals" && pendingCount > 0 ? (
+                          <span className="ml-auto inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-md bg-amber-100 px-1 text-[10.5px] font-semibold tabular-nums text-amber-700">
+                            {pendingCount}
+                          </span>
+                        ) : null}
                       </button>
                     );
                   })}
@@ -372,34 +468,50 @@ export default function DshApp() {
             ))}
           </div>
 
-          <p className="mt-4 px-1.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.07em] text-neutral-400">
-            Chats
-          </p>
-          <nav className="flex flex-col gap-px">
-            {turns.length === 0 ? (
-              <p className="px-1.5 py-1 text-[12px] text-neutral-400">No conversations yet</p>
-            ) : (
-              <button
-                type="button"
-                className="truncate rounded-md bg-neutral-200/70 px-2.5 py-1.5 text-left text-[12.5px] text-neutral-700 transition-colors hover:bg-neutral-200"
-              >
-                {sessionTitle}
-              </button>
-            )}
-          </nav>
-
-          <div className="mt-auto border-t border-neutral-200 pt-2">
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 transition-colors hover:bg-neutral-200/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
-            >
-              <span className="grid h-6 w-6 place-items-center rounded-full bg-neutral-300 text-[10.5px] font-semibold text-white">
-                D
-              </span>
-              <span className="text-[12.5px] text-neutral-700">Damian</span>
-            </button>
+          {sidebarOpen && turns.length > 0 ? (
+            <>
+              <p className="mt-5 px-2 pb-2 text-[11px] font-medium uppercase tracking-[0.04em] text-neutral-400">
+                Chats
+              </p>
+              <nav className="flex flex-col gap-0.5">
+                <button
+                  type="button"
+                  className="flex h-9 w-full items-center rounded-md bg-neutral-200/70 px-2.5 text-left text-[13px] text-neutral-700 transition-colors hover:bg-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
+                >
+                  <span className="truncate">{sessionTitle}</span>
+                </button>
+              </nav>
+            </>
+          ) : null}
           </div>
-        </aside>
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-0 h-3 bg-gradient-to-b from-neutral-50 to-transparent"
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-3 bg-gradient-to-t from-neutral-50 to-transparent"
+          />
+        </div>
+
+        <div className="shrink-0 border-t border-neutral-200 p-2">
+          <button
+            type="button"
+            aria-label={sidebarOpen ? undefined : "Account: Damian"}
+            title={sidebarOpen ? undefined : "Damian"}
+            className={
+              sidebarOpen
+                ? "flex h-11 w-full items-center gap-2.5 rounded-md px-1.5 transition-colors hover:bg-neutral-200/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
+                : "mx-auto grid h-10 w-10 place-items-center rounded-full transition-colors hover:bg-neutral-200/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
+            }
+          >
+            <span className="grid h-7 w-7 place-items-center rounded-full bg-neutral-300 text-[11px] font-semibold text-white">
+              D
+            </span>
+            {sidebarOpen ? <span className="text-[13px] text-neutral-700">Damian</span> : null}
+          </button>
+        </div>
+      </aside>
 
       <main className="flex min-w-0 flex-1 flex-col">
         <Header
