@@ -399,14 +399,15 @@ def _profit_and_loss(company: dict[str, Any], args: dict[str, Any]) -> dict[str,
         movement = credit - debit if row["type"] == "REVENUE" else debit - credit
         bucket["amount"] = add(bucket["amount"], movement)
 
+    ordered = sorted(accounts.values(), key=lambda item: item["code"])
     revenue = [
         dict(item, amount=fmt(item["amount"]))
-        for item in accounts.values()
+        for item in ordered
         if item["type"] == "REVENUE"
     ]
     expenses = [
         dict(item, amount=fmt(item["amount"]))
-        for item in accounts.values()
+        for item in ordered
         if item["type"] == "EXPENSE"
     ]
     total_revenue = add(*(Decimal(item["amount"]) for item in revenue)) if revenue else ZERO
@@ -450,19 +451,20 @@ def _balance_sheet(company: dict[str, Any], args: dict[str, Any]) -> dict[str, A
         else:
             bucket["amount"] = add(bucket["amount"], credit - debit)
 
+    ordered = sorted(balances.values(), key=lambda item: item["code"])
     assets = [
         dict(item, amount=fmt(item["amount"]))
-        for item in balances.values()
+        for item in ordered
         if item["type"] == "ASSET"
     ]
     liabilities = [
         dict(item, amount=fmt(item["amount"]))
-        for item in balances.values()
+        for item in ordered
         if item["type"] == "LIABILITY"
     ]
     equity = [
         dict(item, amount=fmt(item["amount"]))
-        for item in balances.values()
+        for item in ordered
         if item["type"] == "EQUITY"
     ]
 

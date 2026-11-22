@@ -1,7 +1,18 @@
 /** DSH top bar: sidebar toggle + brand on the left, session title centered,
  * "..." session menu on the right. */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  ChevronRight,
+  Copy,
+  Download,
+  Ellipsis,
+  ExternalLink,
+  MessageCircle,
+  PanelLeft,
+  type LucideIcon,
+} from "lucide-react";
+import { iconSize, iconStroke } from "./icons";
 
 type Props = {
   title: string;
@@ -12,6 +23,20 @@ type Props = {
 
 const menuItem =
   "flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] text-neutral-700 transition-colors hover:bg-neutral-100 focus-visible:bg-neutral-100 focus-visible:outline-none";
+
+function MenuLabel({ icon: Icon, children }: { icon: LucideIcon; children: ReactNode }) {
+  return (
+    <span className="flex items-center gap-2">
+      <Icon
+        size={iconSize.md}
+        strokeWidth={iconStroke}
+        aria-hidden="true"
+        className="text-neutral-400"
+      />
+      {children}
+    </span>
+  );
+}
 
 export function Header({ title, onToggleSidebar, onCopyMarkdown, onDownloadLog }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -43,16 +68,15 @@ export function Header({ title, onToggleSidebar, onCopyMarkdown, onDownloadLog }
         onClick={onToggleSidebar}
         className="grid h-8 w-8 place-items-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
       >
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-          <rect x="3" y="4" width="18" height="16" rx="2.5" />
-          <path d="M9 4v16" />
-        </svg>
+        <PanelLeft size={iconSize.lg} strokeWidth={iconStroke} aria-hidden="true" />
       </button>
 
-      <span className="grid h-[18px] w-[18px] place-items-center rounded-[5px] bg-blue-600 text-[10px] font-bold text-white">
+      <span className="grid h-[18px] w-[18px] place-items-center rounded-[5px] bg-blue-600 text-[10px] font-bold text-white lg:hidden">
         M
       </span>
-      <span className="hidden text-[13px] font-semibold tracking-tight text-neutral-900 sm:inline">MicroBalance</span>
+      <span className="hidden text-[13px] font-semibold tracking-tight text-neutral-900 sm:inline lg:hidden">
+        MicroBalance
+      </span>
 
       <span className="pointer-events-none absolute left-1/2 max-w-[42%] -translate-x-1/2 truncate text-[12px] text-neutral-500 sm:max-w-[46%] sm:text-[12.5px]">
         {title}
@@ -67,11 +91,7 @@ export function Header({ title, onToggleSidebar, onCopyMarkdown, onDownloadLog }
           onClick={() => setMenuOpen((open) => !open)}
           className="grid h-8 w-8 place-items-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <circle cx="5" cy="12" r="1.5" />
-            <circle cx="12" cy="12" r="1.5" />
-            <circle cx="19" cy="12" r="1.5" />
-          </svg>
+          <Ellipsis size={iconSize.lg} strokeWidth={iconStroke} aria-hidden="true" />
         </button>
 
         {menuOpen ? (
@@ -89,7 +109,7 @@ export function Header({ title, onToggleSidebar, onCopyMarkdown, onDownloadLog }
                 setMenuOpen(false);
               }}
             >
-              Copy Session as Markdown
+              <MenuLabel icon={Copy}>Copy session as Markdown</MenuLabel>
             </button>
             <button
               type="button"
@@ -100,15 +120,20 @@ export function Header({ title, onToggleSidebar, onCopyMarkdown, onDownloadLog }
                 setMenuOpen(false);
               }}
             >
-              Download session log
+              <MenuLabel icon={Download}>Download session log</MenuLabel>
             </button>
             <button type="button" role="menuitem" className={menuItem}>
-              Open in
-              <span className="text-neutral-400">›</span>
+              <MenuLabel icon={ExternalLink}>Open in</MenuLabel>
+              <ChevronRight
+                size={iconSize.sm}
+                strokeWidth={iconStroke}
+                aria-hidden="true"
+                className="text-neutral-400"
+              />
             </button>
             <div className="my-1 h-px bg-neutral-100" />
             <button type="button" role="menuitem" className={menuItem}>
-              Feedback
+              <MenuLabel icon={MessageCircle}>Feedback</MenuLabel>
             </button>
           </div>
         ) : null}

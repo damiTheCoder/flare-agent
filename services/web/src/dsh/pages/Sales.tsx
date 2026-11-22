@@ -2,6 +2,11 @@ import { money, type Bill, type Invoice } from "../rest";
 import { useApi } from "../useApi";
 import { Cell, Page, PageState, Row, StatusPill, Table } from "./ui";
 
+/** Zero money is de-emphasised so real amounts carry the eye. */
+function zeroTone(value: string | number | undefined): string {
+  return Number(value ?? 0) === 0 ? "text-neutral-400" : "";
+}
+
 export function SalesPage() {
   const { data, error, loading } = useApi<{ invoices: Invoice[]; count: number }>("/api/invoices");
 
@@ -25,13 +30,15 @@ export function SalesPage() {
           >
             {data.invoices.map((invoice) => (
               <Row key={invoice.id}>
-                <Cell className="font-mono text-[11px] text-neutral-500">{invoice.invoiceNumber}</Cell>
+                <Cell className="font-mono text-[11.5px] text-neutral-500">{invoice.invoiceNumber}</Cell>
                 <Cell>{invoice.customer ?? "—"}</Cell>
                 <Cell className="hidden text-neutral-500 sm:table-cell">{invoice.date}</Cell>
                 <Cell className="hidden text-neutral-500 md:table-cell">{invoice.dueDate}</Cell>
                 <Cell align="right">{money(invoice.total)}</Cell>
-                <Cell align="right">{money(invoice.amountPaid)}</Cell>
-                <Cell align="right" strong>
+                <Cell align="right" className={zeroTone(invoice.amountPaid)}>
+                  {money(invoice.amountPaid)}
+                </Cell>
+                <Cell align="right" strong className={zeroTone(invoice.outstanding)}>
                   {money(invoice.outstanding)}
                 </Cell>
                 <Cell>
@@ -70,7 +77,7 @@ export function PurchasesPage() {
           >
             {data.bills.map((bill) => (
               <Row key={bill.id}>
-                <Cell className="font-mono text-[11px] text-neutral-500">{bill.billNumber}</Cell>
+                <Cell className="font-mono text-[11.5px] text-neutral-500">{bill.billNumber}</Cell>
                 <Cell>{bill.vendor ?? "—"}</Cell>
                 <Cell className="hidden text-neutral-500 sm:table-cell">{bill.date}</Cell>
                 <Cell align="right">{money(bill.total)}</Cell>
@@ -78,8 +85,10 @@ export function PurchasesPage() {
                   {money(Number(bill.total) - Number(bill.netPayable))}
                 </Cell>
                 <Cell align="right">{money(bill.netPayable)}</Cell>
-                <Cell align="right">{money(bill.amountPaid)}</Cell>
-                <Cell align="right" strong>
+                <Cell align="right" className={zeroTone(bill.amountPaid)}>
+                  {money(bill.amountPaid)}
+                </Cell>
+                <Cell align="right" strong className={zeroTone(bill.outstanding)}>
                   {money(bill.outstanding)}
                 </Cell>
                 <Cell>

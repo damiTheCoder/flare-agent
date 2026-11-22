@@ -1,6 +1,8 @@
 /** DSH tool card: light-blue surface, labelled sections, structured rows. */
 
+import { Check, CircleAlert, Clock, Wrench } from "lucide-react";
 import type { ToolCallEvent, ToolResultEvent } from "./api";
+import { iconSize, iconStroke } from "./icons";
 
 type Props = {
   call: ToolCallEvent;
@@ -64,14 +66,32 @@ function view(call: ToolCallEvent, result: ToolResultEvent | undefined): View | 
   }
 }
 
+const badgeBase =
+  "inline-flex items-center gap-1 rounded-full px-2 py-[2px] text-[10.5px] font-semibold leading-none";
+
 function badge(result: ToolResultEvent | undefined) {
   if (result === undefined) {
-    return <span className="rounded-full bg-amber-100 px-2 py-[1px] text-[9.5px] font-semibold text-amber-700">Pending</span>;
+    return (
+      <span className={`${badgeBase} bg-amber-100 text-amber-700`}>
+        <Clock size={iconSize.xs} strokeWidth={iconStroke} aria-hidden="true" />
+        Pending
+      </span>
+    );
   }
   if (result.ok) {
-    return <span className="rounded-full bg-emerald-100 px-2 py-[1px] text-[9.5px] font-semibold text-emerald-700">Success</span>;
+    return (
+      <span className={`${badgeBase} bg-emerald-100 text-emerald-700`}>
+        <Check size={iconSize.xs} strokeWidth={iconStroke} aria-hidden="true" />
+        Success
+      </span>
+    );
   }
-  return <span className="rounded-full bg-rose-100 px-2 py-[1px] text-[9.5px] font-semibold text-rose-700">Error</span>;
+  return (
+    <span className={`${badgeBase} bg-rose-100 text-rose-700`}>
+      <CircleAlert size={iconSize.xs} strokeWidth={iconStroke} aria-hidden="true" />
+      Error
+    </span>
+  );
 }
 
 function money(value: string | undefined): string {
@@ -84,8 +104,8 @@ function money(value: string | undefined): string {
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="mt-2 first:mt-0">
-      <p className="text-[9.5px] font-semibold uppercase tracking-[0.08em] text-sky-700/60">{label}</p>
-      <div className="mt-0.5 text-[12px] leading-5 text-slate-700">{children}</div>
+      <p className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-sky-700/60">{label}</p>
+      <div className="mt-1 text-[12.5px] leading-5 text-slate-700">{children}</div>
     </div>
   );
 }
@@ -102,7 +122,13 @@ export function ToolCard({ call, result, onContextMenu }: Props) {
       onContextMenu={onContextMenu}
     >
       <div className="flex items-center gap-1.5">
-        <span className="font-mono text-[11px] font-semibold text-sky-800/80">{call.name}</span>
+        <Wrench
+          size={iconSize.sm}
+          strokeWidth={iconStroke}
+          aria-hidden="true"
+          className="shrink-0 text-sky-700/70"
+        />
+        <span className="font-mono text-[11.5px] font-semibold text-sky-800/80">{call.name}</span>
         <span className="ml-auto">{badge(result)}</span>
       </div>
 
@@ -121,15 +147,15 @@ export function ToolCard({ call, result, onContextMenu }: Props) {
                 with no email on file. Is this invoice for {data.customer}?
               </p>
             )}
-            <p className="mt-1 inline-flex rounded-md bg-white/80 px-1.5 py-0.5 text-[11.5px] text-slate-600">
+            <p className="mt-1 inline-flex rounded-md bg-white/80 px-2 py-1 text-[11.5px] text-slate-600">
               Yes, {data.customer}
             </p>
           </Section>
 
           <Section label="Items">
-            <div className="-mx-1 overflow-x-auto px-1"><table className="w-full min-w-[260px] border-collapse text-[11.5px]">
+            <div className="-mx-1 overflow-x-auto px-1"><table className="w-full min-w-[260px] border-collapse text-[12px]">
               <thead>
-                <tr className="text-[9px] uppercase tracking-wide text-slate-400">
+                <tr className="text-[10px] uppercase tracking-[0.05em] text-slate-400">
                   <th className="pb-0.5 text-left font-semibold">Item</th>
                   <th className="pb-0.5 text-right font-semibold">Qty</th>
                   <th className="hidden pb-0.5 text-right font-semibold sm:table-cell">Unit</th>
@@ -153,14 +179,14 @@ export function ToolCard({ call, result, onContextMenu }: Props) {
             </table></div>
           </Section>
 
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-sky-200/60 pt-1.5 text-[11px] text-slate-500">
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-sky-200/60 pt-2 text-[11.5px] text-slate-500">
             <span>
               Subtotal <span className="text-slate-700">{money(data.subtotal)}</span>
             </span>
             <span>
               VAT <span className="text-slate-700">{money(data.vat)}</span>
             </span>
-            <span className="ml-auto rounded-md bg-white/80 px-1.5 py-0.5 font-semibold text-slate-800">
+            <span className="ml-auto rounded-md bg-white/80 px-2 py-1 font-semibold tabular-nums text-slate-800">
               Total {money(data.total)}
             </span>
           </div>

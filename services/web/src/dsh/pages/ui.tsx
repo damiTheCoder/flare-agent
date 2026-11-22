@@ -1,6 +1,8 @@
 /** Shared page chrome: dense DSH tables. */
 
 import type { ReactNode } from "react";
+import { Inbox, LoaderCircle } from "lucide-react";
+import { iconSize, iconStroke } from "../icons";
 
 export function Page({ title, meta, children }: { title: string; meta?: string; children: ReactNode }) {
   return (
@@ -90,30 +92,23 @@ export function StatusPill({ status }: { status: string }) {
 
 function Spinner() {
   return (
-    <span
+    <LoaderCircle
+      size={iconSize.sm}
+      strokeWidth={iconStroke}
+      className="animate-spin"
       aria-hidden="true"
-      className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-[1.5px] border-neutral-300 border-t-neutral-600"
     />
   );
 }
 
 function InboxIcon() {
   return (
-    <svg
-      width="32"
-      height="32"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+    <Inbox
+      size={iconSize.xxxl}
+      strokeWidth={iconStroke}
       className="text-neutral-300"
       aria-hidden="true"
-    >
-      <path d="M22 12h-6l-2 3h-4l-2-3H2" />
-      <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
-    </svg>
+    />
   );
 }
 

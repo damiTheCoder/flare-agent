@@ -1,6 +1,7 @@
 /** DSH-style shell: dense sidebar + chat feed + floating composer. */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Plus } from "lucide-react";
 import { streamChat, type ChatMessage, type ToolCallEvent, type ToolResultEvent } from "./api";
 import { Composer } from "./Composer";
 import { Header } from "./Header";
@@ -14,6 +15,7 @@ import { EmployeesPage, PayrollHistoryPage, TaxSummaryPage } from "./pages/Payro
 import { BalanceSheetPage, ProfitLossPage } from "./pages/Reports";
 import { PurchasesPage, SalesPage } from "./pages/Sales";
 import { TrialBalancePage } from "./pages/TrialBalance";
+import { iconSize, iconStroke, navIcons, type View } from "./icons";
 import { ToolCard } from "./ToolCard";
 
 type Item = { kind: "text"; text: string } | { kind: "tool"; callId: string };
@@ -21,27 +23,6 @@ type Turn =
   | { id: string; role: "user"; text: string }
   | { id: string; role: "assistant"; items: Item[] };
 type ToolState = { call: ToolCallEvent; result?: ToolResultEvent };
-
-type View =
-  | "dashboard"
-  | "accounts"
-  | "manual-journal"
-  | "approvals"
-  | "trial-balance"
-  | "invoices"
-  | "customers"
-  | "ar-aging"
-  | "bank-accounts"
-  | "reconciliation"
-  | "bills"
-  | "vendors"
-  | "ap-aging"
-  | "employees"
-  | "payroll-history"
-  | "tax-summary"
-  | "profit-loss"
-  | "balance-sheet"
-  | "chat";
 
 type NavItem = { key: View; label: string };
 
@@ -345,7 +326,8 @@ export default function DshApp() {
             onClick={newChat}
             className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-neutral-200 bg-white text-[12.5px] font-medium text-neutral-700 shadow-sm transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
           >
-            <span className="text-[14px] leading-none">+</span> New chat
+            <Plus size={iconSize.md} strokeWidth={iconStroke} aria-hidden="true" />
+            New chat
           </button>
 
           <div className="mt-2 flex flex-col">
@@ -357,21 +339,34 @@ export default function DshApp() {
                   </p>
                 ) : null}
                 <nav className="flex flex-col gap-px">
-                  {group.items.map((item) => (
-                    <button
-                      key={item.key}
-                      type="button"
-                      onClick={() => selectView(item.key)}
-                      aria-current={view === item.key ? "page" : undefined}
-                      className={`relative rounded-md py-1.5 pl-2.5 pr-1.5 text-left text-[12.5px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15 ${
-                        view === item.key
-                          ? "bg-neutral-200/70 font-medium text-neutral-900 before:absolute before:left-0 before:top-1/2 before:h-3.5 before:w-[2px] before:-translate-y-1/2 before:rounded-full before:bg-blue-600 before:content-['']"
-                          : "text-neutral-600 hover:bg-neutral-200/50 hover:text-neutral-900"
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
+                  {group.items.map((item) => {
+                    const Icon = navIcons[item.key];
+                    return (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => selectView(item.key)}
+                        aria-current={view === item.key ? "page" : undefined}
+                        className={`group relative flex w-full items-center gap-2 rounded-md py-1.5 pl-2.5 pr-1.5 text-left text-[12.5px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15 ${
+                          view === item.key
+                            ? "bg-neutral-200/70 font-medium text-neutral-900 before:absolute before:left-0 before:top-1/2 before:h-3.5 before:w-[2px] before:-translate-y-1/2 before:rounded-full before:bg-blue-600 before:content-['']"
+                            : "text-neutral-600 hover:bg-neutral-200/50 hover:text-neutral-900"
+                        }`}
+                      >
+                        <Icon
+                          size={iconSize.lg}
+                          strokeWidth={iconStroke}
+                          aria-hidden="true"
+                          className={`shrink-0 ${
+                            view === item.key
+                              ? "text-neutral-600"
+                              : "text-neutral-400 group-hover:text-neutral-600"
+                          }`}
+                        />
+                        <span className="truncate">{item.label}</span>
+                      </button>
+                    );
+                  })}
                 </nav>
               </div>
             ))}

@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { Check } from "lucide-react";
+import { iconSize, iconStroke } from "../icons";
 import { apiPost, money, type Account, type Journal } from "../rest";
 import { useApi } from "../useApi";
 import { Cell, Page, PageState, Row, StatusPill, Table } from "./ui";
@@ -6,24 +8,6 @@ import { Cell, Page, PageState, Row, StatusPill, Table } from "./ui";
 const field =
   "mt-1 h-9 w-full rounded-md border border-neutral-200 bg-white px-2.5 text-[12.5px] text-neutral-800 transition-colors placeholder:text-neutral-300 hover:border-neutral-300 focus:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-900/10";
 const label = "text-[10.5px] font-medium uppercase tracking-[0.05em] text-neutral-500";
-
-function CheckIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
-  );
-}
 
 export function ManualJournalPage() {
   const accounts = useApi<{ accounts: Account[]; count: number }>("/api/accounts");
@@ -172,7 +156,7 @@ export function ManualJournalPage() {
             ) : null}
             {result !== null ? (
               <span className="inline-flex items-center gap-1.5 text-[11.5px] text-emerald-700">
-                <CheckIcon />
+                <Check size={iconSize.sm} strokeWidth={iconStroke} aria-hidden="true" />
                 Proposed {result.id} — {money(result.totalDebit)}. It is waiting in Journal Approvals.
               </span>
             ) : null}
@@ -243,7 +227,7 @@ export function ApprovalsPage() {
                 <Cell>
                   <StatusPill status={journal.status} />
                 </Cell>
-                <Cell align="right">
+                <td className="px-3 py-1 text-right">
                   <button
                     type="button"
                     disabled={busy === journal.id}
@@ -252,7 +236,7 @@ export function ApprovalsPage() {
                   >
                     {busy === journal.id ? "Approving…" : "Approve"}
                   </button>
-                </Cell>
+                </td>
               </Row>
             ))}
           </Table>

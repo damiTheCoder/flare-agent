@@ -57,7 +57,9 @@ function AgingPage({ kind }: { kind: "ar" | "ap" }) {
                   <th scope="col" className="px-3 py-2 text-left font-semibold">{document}</th>
                   <th scope="col" className="px-3 py-2 text-left font-semibold">{party}</th>
                   <th scope="col" className="hidden px-3 py-2 text-left font-semibold sm:table-cell">Due</th>
-                  <th scope="col" className="hidden px-3 py-2 text-right font-semibold md:table-cell">Days</th>
+                  <th scope="col" className="hidden px-3 py-2 text-right font-semibold md:table-cell">
+                    Days past due
+                  </th>
                   <th scope="col" className="px-3 py-2 text-left font-semibold">Bucket</th>
                   <th scope="col" className="px-3 py-2 text-right font-semibold">Outstanding</th>
                 </tr>
@@ -65,13 +67,18 @@ function AgingPage({ kind }: { kind: "ar" | "ap" }) {
             >
               {rows.map((row, index) => (
                 <Row key={row.invoiceId ?? row.billId ?? index}>
-                  <Cell className="font-mono text-[11px] text-neutral-500">
+                  <Cell className="font-mono text-[11.5px] text-neutral-500">
                     {row.invoiceNumber ?? row.billNumber ?? "—"}
                   </Cell>
                   <Cell>{(kind === "ar" ? row.customer : row.vendor) ?? "—"}</Cell>
                   <Cell className="hidden text-neutral-500 sm:table-cell">{row.dueDate ?? "—"}</Cell>
-                  <Cell align="right" className="hidden md:table-cell">
-                    {row.daysPastDue}
+                  <Cell
+                    align="right"
+                    className={`hidden md:table-cell ${
+                      Number(row.daysPastDue) > 0 ? "text-neutral-700" : "text-neutral-400"
+                    }`}
+                  >
+                    {Math.max(0, Number(row.daysPastDue) || 0)}
                   </Cell>
                   <Cell className="capitalize text-neutral-500">{row.bucket}</Cell>
                   <Cell align="right" strong>

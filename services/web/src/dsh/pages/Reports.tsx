@@ -27,12 +27,12 @@ function Section({ label }: { label: string }) {
   );
 }
 
-function Lines({ lines }: { lines: StatementLine[] }) {
+function Lines({ lines, emptyLabel = "No balances" }: { lines: StatementLine[]; emptyLabel?: string }) {
   if (lines.length === 0) {
     return (
       <tr className="border-t border-neutral-100">
         <td colSpan={3} className="px-3 py-[9px] text-[12.5px] text-neutral-400">
-          No balances
+          {emptyLabel}
         </td>
       </tr>
     );
@@ -143,18 +143,22 @@ export function BalanceSheetPage() {
             <div className="mb-3 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
               <Metric label="Total assets" amount={money(data.totalAssets)} />
               <Metric label="Liabilities" amount={money(data.totalLiabilities)} />
-              <Metric label="Equity" amount={money(data.totalEquity)} />
+              <Metric
+                label="Equity"
+                amount={money(data.totalEquity)}
+                tone={Number(data.totalEquity) < 0 ? "text-rose-600" : ""}
+              />
             </div>
 
             <StatementTable>
               <Section label="Assets" />
               <Lines lines={data.assets} />
-              <Total label="Total assets" amount={data.totalAssets} strong />
+              <Total label="Total assets" amount={data.totalAssets} />
               <Section label="Liabilities" />
               <Lines lines={data.liabilities} />
               <Total label="Total liabilities" amount={data.totalLiabilities} />
               <Section label="Equity" />
-              <Lines lines={data.equity} />
+              <Lines lines={data.equity} emptyLabel="No equity accounts" />
               <Row>
                 <Cell>{""}</Cell>
                 <Cell className="text-neutral-600">Current period earnings</Cell>
