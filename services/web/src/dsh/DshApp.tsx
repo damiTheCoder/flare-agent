@@ -358,7 +358,7 @@ export default function DshApp() {
               src={mark}
               alt=""
               aria-hidden="true"
-              className="h-[18px] w-[18px] rounded-full object-cover"
+              className="h-5 w-5 rounded-md object-cover"
             />
           ) : (
             <Icon
