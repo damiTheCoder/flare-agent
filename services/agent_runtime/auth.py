@@ -31,6 +31,7 @@ from flare_common.tenant import DEFAULT_TENANT
 logger = logging.getLogger(__name__)
 
 COOKIE_NAME = "mb_session"
+STATE_COOKIE = "mb_oauth_state"
 GOOGLE_AUTH = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO = "https://www.googleapis.com/oauth2/v3/userinfo"
@@ -118,7 +119,7 @@ def build_auth_router(settings: Settings, *, enabled: bool) -> APIRouter:
         }
 
     @router.get("/auth/google/start")
-    async def google_start() -> Any:
+    async def google_start(request: Request) -> Any:
         if not google_configured:
             return JSONResponse(
                 status_code=503,
@@ -141,13 +142,30 @@ def build_auth_router(settings: Settings, *, enabled: bool) -> APIRouter:
                 "prompt": "select_account",
             }
         )
-        return RedirectResponse(f"{GOOGLE_AUTH}?{query}", status_code=302)
+        response = RedirectResponse(f"{GOOGLE_AUTH}?{query}", status_code=302)
+        response.set_cookie(
+            STATE_COOKIE,
+            state,
+            max_age=600,
+            httponly=True,
+            samesite="lax",
+            secure=_is_secure(request),
+            path="/",
+        )
+        return response
 
     @router.get("/auth/google/callback")
     async def google_callback(request: Request, code: str = "", state: str = "") -> Any:
+        cookie_state = request.cookies.get(STATE_COOKIE, "")
         payload = verify_session(state, settings.session_secret)
-        if payload is None or payload.get("purpose") != "oauth":
-            return RedirectResponse("/?auth=state", status_code=302)
+        if (
+            payload is None
+            or payload.get("purpose") != "oauth"
+            or not hmac.compare_digest(cookie_state, state)
+        ):
+            response = RedirectResponse("/?auth=state", status_code=302)
+            response.delete_cookie(STATE_COOKIE, path="/")
+            return response
         if code == "":
             return RedirectResponse("/?auth=denied", status_code=302)
         try:
@@ -169,9 +187,20 @@ def build_auth_router(settings: Settings, *, enabled: bool) -> APIRouter:
                 )
                 info.raise_for_status()
                 profile = info.json()
+        except httpx.HTTPStatusError as exc:
+            # Google puts the actionable reason in the body (invalid_client,
+            # invalid_grant, redirect_uri_mismatch, ...). Log it, never tokens.
+            logger.warning(
+                "google sign-in failed: %s | %s", exc, exc.response.text[:300].replace("\n", " ")
+            )
+            response = RedirectResponse("/?auth=failed", status_code=302)
+            response.delete_cookie(STATE_COOKIE, path="/")
+            return response
         except httpx.HTTPError as exc:
             logger.warning("google sign-in failed: %s", exc)
-            return RedirectResponse("/?auth=failed", status_code=302)
+            response = RedirectResponse("/?auth=failed", status_code=302)
+            response.delete_cookie(STATE_COOKIE, path="/")
+            return response
 
         token = sign_session(
             _user_payload(profile, settings),
@@ -180,6 +209,7 @@ def build_auth_router(settings: Settings, *, enabled: bool) -> APIRouter:
         )
         response = RedirectResponse("/", status_code=302)
         _set_session_cookie(response, token, settings, _is_secure(request))
+        response.delete_cookie(STATE_COOKIE, path="/")
         return response
 
     @router.post("/auth/local")

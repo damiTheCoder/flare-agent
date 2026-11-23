@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 from fastapi.testclient import TestClient
 
@@ -134,7 +135,14 @@ def test_google_callback_issues_a_session(tmp_path: Path, monkeypatch) -> None:
         )
     )
     client = TestClient(app)
-    state = sign_session({"purpose": "oauth", "nonce": "n"}, "test-secret", 600)
+    start = client.get("/auth/google/start", follow_redirects=False)
+    assert start.status_code == 302
+    state = parse_qs(urlparse(start.headers["location"]).query)["state"][0]
+    cookie = start.headers["set-cookie"]
+    assert "mb_oauth_state=" in cookie
+    assert "httponly" in cookie.lower()
+    assert "samesite=lax" in cookie.lower()
+    assert "secure" not in cookie.lower()
     response = client.get(f"/auth/google/callback?code=abc&state={state}", follow_redirects=False)
     assert response.status_code == 302
     assert response.headers["location"] == "/"
